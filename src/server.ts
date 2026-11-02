@@ -62,6 +62,21 @@ function readRaw(req: http.IncomingMessage, limit: number): Promise<Buffer> {
   });
 }
 
+/** Origin do pedido igual ao Host (ou X-Forwarded-Host do proxy). Sem Origin: recusa. */
+function sameOrigin(req: http.IncomingMessage): boolean {
+  const origin = req.headers.origin;
+  if (typeof origin !== "string" || origin === "null") return false;
+  let host: string;
+  try {
+    host = new URL(origin).host.toLowerCase();
+  } catch {
+    return false;
+  }
+  const xfh = req.headers["x-forwarded-host"];
+  const hosts = [req.headers.host, (Array.isArray(xfh) ? xfh[0] : xfh)?.split(",")[0]?.trim()];
+  return hosts.some((h) => typeof h === "string" && h.toLowerCase() === host);
+}
+
 function clientIp(req: http.IncomingMessage): string {
   const xff = req.headers["x-forwarded-for"];
   const first = (Array.isArray(xff) ? xff[0] : xff)?.split(",")[0]?.trim();
@@ -215,6 +230,46 @@ export function createApp(opts: AppOptions): http.Server {
         if (method !== "GET") return json(405, { error: "use GET" });
         if (!authed(req)) return json(401, { error: "não autorizado" });
         return json(200, store.state);
+      }
+
+      if (route === "/api/resolve") {
+        if (method !== "POST") return json(405, { error: "use POST" });
+        // Ação humana do painel: só o cookie de login vale (Bearer não), e só da mesma origem.
+        const c = readCookie(req.headers.cookie, COOKIE_NAME);
+        if (c === null || !safeEqual(c, session)) {
+          req.resume();
+          return json(401, { error: "não autorizado" });
+        }
+        if (!sameOrigin(req)) {
+          req.resume();
+          return json(403, { error: "origem não permitida" });
+        }
+        const ct = String(req.headers["content-type"] ?? "");
+        if (!/^application\/json\b/i.test(ct)) {
+          req.resume();
+          return json(415, { error: "Content-Type deve ser application/json" });
+        }
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(await readBody(req, 4096));
+        } catch (e) {
+          if (e instanceof HttpError) throw e;
+          return json(400, { error: "JSON inválido" });
+        }
+        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+          return json(400, { error: "envie {\"bot\": \"nome\"}" });
+        const keys = Object.keys(parsed);
+        if (keys.length !== 1 || keys[0] !== "bot") return json(400, { error: "envie só o campo bot" });
+        const name = botName((parsed as { bot: unknown }).bot, "bot");
+        const r = store.resolve(name);
+        if (r === "desconhecido") return json(404, { error: "bot não encontrado" });
+        if (r === "nao_esperando") return json(409, { error: "o bot não está esperando por você" });
+        try {
+          await store.persist();
+        } catch {
+          return json(500, { error: "falha ao salvar o estado" });
+        }
+        return json(200, { ok: true, bot: name, status: "idle" });
       }
 
       if (route === "/login") {
