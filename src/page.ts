@@ -2,6 +2,7 @@
 // o painel busca /api/state (protegido) e monta o DOM só com textContent
 // e atributos SVG. Sem CDN nem dependências: tudo inline (SVG + CSS).
 import { floorOrder } from "./floors.js";
+import { frescor } from "./frescor.js";
 
 const STYLE = String.raw`
 :root{--bg:#e9ecf1;--card:#16181d;--card2:#1f2229;--line:#2b2f38;--txt:#f3f4f6;--mut:#9aa1ad;
@@ -54,6 +55,9 @@ button,.btn{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:7px 
 .sel-cab .l1{display:flex;gap:10px;align-items:center}.sel-cab .nome{font-size:16px;font-weight:700;line-height:1.2}
 .sel-cab .sub{font-size:12px;opacity:.75}.sel-cab .chip{display:inline-block;margin-top:10px;background:rgba(0,0,0,.14);border-radius:999px;padding:3px 10px;font-weight:600;font-size:12px}
 .sel-cab .passo{margin-top:8px;font-size:14px;font-weight:600;word-break:break-word}
+.fresco{margin-top:8px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px}.fresco>span:first-child{opacity:.8}
+.selo-velho{display:inline-block;background:rgba(0,0,0,.72);color:#fcd34d;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;white-space:nowrap}
+.item .t3{display:flex;align-items:center;gap:6px;margin-top:3px}.espera .selo-velho{background:rgba(245,158,11,.16);color:#fcd34d;box-shadow:inset 0 0 0 1px rgba(245,158,11,.55)}
 .sel-cab.s-error,.sel-cab.s-none,.sel-cab.s-idle,.sel-cab.s-done{color:#fff}.fechar{margin-left:auto;align-self:flex-start;background:rgba(0,0,0,.12);color:inherit;border-radius:8px;padding:2px 8px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
 .stats div{background:var(--card2);border-radius:10px;padding:8px}.stats b{display:block;font-size:16px}.stats small{color:var(--mut);font-size:11px}
@@ -129,6 +133,7 @@ function ha(iso){if(!iso)return '';var s=Math.round((Date.now()-new Date(iso))/1
 function dur(iso){if(!iso)return '';var m=Math.max(0,Math.round((Date.now()-new Date(iso))/60000));if(m<60)return m+' min';var h=Math.floor(m/60);if(h<48)return h+' h '+(m%60)+' min';return Math.round(h/24)+' dias';}
 function em(iso){if(!iso)return 'sem próxima';var m=Math.round((new Date(iso)-Date.now())/60000);if(isNaN(m))return '';if(m<=0)return 'agora';
  if(m<60)return 'em '+m+' min';var h=Math.floor(m/60);if(h<24)return 'em '+h+' h'+(m%60?' '+(m%60)+' min':'');return fData.format(new Date(iso));}
+function selo(){var s=el('span','selo-velho','pode estar desatualizado');s.title='Esperando há mais de 30 min sem nova atualização de status. Confira no chat do bot.';return s;}
 function trunc(s,n){s=String(s);return s.length>n?s.slice(0,n-1)+'…':s;}
 // ---- cores ----
 function hex(c){c=String(c||'').toLowerCase();if(CORES[c])return CORES[c];if(/^#[0-9a-f]{6}$/.test(c))return c;
@@ -348,7 +353,7 @@ function cena(lista){
   var t=sv('text',{x:tx,y:y+(l2?15:h/2+4),fill:c1},gg);t.textContent=nome;
   if(l2){var t2=sv('text',{x:tx,y:y+28,fill:c2,class:'l2'},gg);t2.textContent=l2;
    if(b.s==='working'){var dgg=sv('g',{class:'dig'},gg),dx=tx+l2.length*5.6+6;for(var q=0;q<3;q++)sv('circle',{cx:dx+q*5,cy:y+25,r:1.7,fill:'#22c55e'},dgg);}}
-  var tt=sv('title',null,gg);tt.textContent=b.nome+' · '+NOME_ST[b.s]+(b.step?' · '+b.step:'');});
+  var tt=sv('title',null,gg),fb3=frescor(b.at,b.s,Date.now());tt.textContent=b.nome+' · '+NOME_ST[b.s]+(b.step?' · '+b.step:'')+' · '+fb3.texto+(fb3.velho?' · pode estar desatualizado':'');});
  // câmera: zoom centraliza o bot no espaço livre entre os painéis, sem inclinar
  var cx=(fl+fr)/2,cy=(ft+Math.min(fb,H))/2,Z=1.9,c1=alvo&&!RM.matches?{s:Z,x:cx-alvo[0]*Z,y:cy-alvo[1]*Z}:{s:1,x:0,y:0};
  if(!alvo)zoom=null;if(zoom&&bm[zoom]){bm[zoom].classList.add('foco');bl.appendChild(bm[zoom]);}cam.classList.toggle('zoom',!!zoom);cam.style.transformOrigin='0 0';cam.style.transform=tf(c1);
@@ -385,7 +390,8 @@ function desenhar(){
  var bd=el('span','badge'+(esp.length?' amb':' ok'),esp.length);
  var e=card('esperando','Esperando por mim',bd);e[0].classList.add('espera');if(esp.length)e[0].classList.add('alerta');
  esp.forEach(function(n){var b=bot(n),t2=el('div','t2'),it=linha(n,n,null,linkChat(n));t2.appendChild(el('b',null,'há '+(dur(b.status_at)||'0 min')));
-  if(b.step)t2.appendChild(document.createTextNode(' · '+b.step));it.querySelector('.tx').appendChild(t2);e[1].appendChild(it);});
+  if(b.step)t2.appendChild(document.createTextNode(' · '+b.step));it.querySelector('.tx').appendChild(t2);
+  var fe=frescor(b.status_at,'waiting_user',Date.now());if(fe.velho){var t3=el('div','t3');t3.appendChild(selo());it.querySelector('.tx').appendChild(t3);}e[1].appendChild(it);});
  if(!esp.length){var ok=el('div','ok-linha');ok.appendChild(el('i',null,'✓'));ok.appendChild(document.createTextNode('Ninguém esperando por você.'));e[1].appendChild(ok);}esq.appendChild(e[0]);
  var a=card('andares','Andares');ts.forEach(function(t,i){var r=el('div','andar'+(t.nome===andarSel?' sel':''));r.appendChild(el('span','n',i+1));r.appendChild(el('span','nm',t.nome));
   var q={working:0,waiting_user:0,error:0};t.bots.forEach(function(n){var s=stt(n);if(q[s]!=null)q[s]++;});
@@ -412,7 +418,8 @@ function desenhar(){
   var l1=el('div','l1');l1.appendChild(boneco(botSel,b,44));var nm=el('div');nm.appendChild(el('div','nome',botSel));
   nm.appendChild(el('div','sub',(b.team||SEM)+' · mesa '+(andar.bots.indexOf(botSel)+1)));l1.appendChild(nm);cab.appendChild(l1);
   cab.appendChild(el('span','chip',NOME_ST[s]+(b.status_at?' · '+dur(b.status_at):'')));
-  if(b.step)cab.appendChild(el('div','passo',b.step));dir.appendChild(cab);
+  if(b.step)cab.appendChild(el('div','passo',b.step));
+  var fz=frescor(b.status_at,s,Date.now()),fq=el('div','fresco');fq.appendChild(el('span',null,fz.texto));if(fz.velho)fq.appendChild(selo());if(b.status_at)fq.title='Última atualização de status: '+fData.format(new Date(b.status_at));cab.appendChild(fq);dir.appendChild(cab);
   var det=el('section','card'),stt3=el('div','stats'),u=st.usage,rec=b.recent||[];
   [[rec.length,'passos recentes'],[(b.routines||[]).length,'rotinas'],[u&&u.bots&&u.bots[botSel]!=null?u.bots[botSel]+'%':'—','do consumo']].forEach(function(x){var d=el('div');d.appendChild(el('b',null,x[0]));d.appendChild(el('small',null,x[1]));stt3.appendChild(d);});
   det.appendChild(stt3);det.appendChild(el('h3',null,'Passos recentes'));var ps=el('div','corpo passos');
@@ -449,5 +456,5 @@ export function panelPage(nonce: string): string {
 <div id="topo"><div class="marca">Painel dos bots <span class="vivo" id="vivo"><i></i> carregando · </span><span id="hora"></span></div>
 <div class="contas" id="contas"></div><form method="post" action="/logout"><button type="submit" class="sair">Sair</button></form></div>
 <div id="esq"></div><div id="ativ"></div><div id="dir"></div>
-<script nonce="${nonce}">var floorOrder=${floorOrder.toString()};${CLIENT}</script></body></html>`;
+<script nonce="${nonce}">var floorOrder=${floorOrder.toString()};var frescor=${frescor.toString()};${CLIENT}</script></body></html>`;
 }
