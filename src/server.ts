@@ -2,8 +2,10 @@ import http from "node:http";
 import { randomBytes } from "node:crypto";
 import { COOKIE_NAME, LoginLimiter, bearer, readCookie, safeEqual, sessionValue } from "./auth.js";
 import { loginPage, panelPage } from "./page.js";
-import { Store } from "./store.js";
-import { ValidationError, parseMessage } from "./validate.js";
+import { AVATAR_MAX, Store } from "./store.js";
+import { ValidationError, botName, parseMessage } from "./validate.js";
+
+const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 export const BODY_LIMIT = 64 * 1024;
 
@@ -19,7 +21,11 @@ class HttpError extends Error {
   }
 }
 
-function readBody(req: http.IncomingMessage, limit: number): Promise<string> {
+async function readBody(req: http.IncomingMessage, limit: number): Promise<string> {
+  return (await readRaw(req, limit)).toString("utf8");
+}
+
+function readRaw(req: http.IncomingMessage, limit: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const declared = Number(req.headers["content-length"] ?? "0");
     if (declared > limit) {
@@ -44,7 +50,7 @@ function readBody(req: http.IncomingMessage, limit: number): Promise<string> {
     req.on("end", () => {
       if (!done) {
         done = true;
-        resolve(Buffer.concat(chunks).toString("utf8"));
+        resolve(Buffer.concat(chunks));
       }
     });
     req.on("error", () => {
@@ -94,10 +100,12 @@ export function createApp(opts: AppOptions): http.Server {
     res.setHeader("Strict-Transport-Security", "max-age=31536000");
     res.setHeader(
       "Content-Security-Policy",
-      `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
+      `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; img-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
     );
     // Log mínimo: método, rota (sem query), status. Nunca corpo, step ou token.
-    res.on("finish", () => log(`${method} ${route.slice(0, 64)} ${res.statusCode}`));
+    // Em /avatar/<bot> loga só o padrão da rota, não o nome do bot.
+    const logRoute = route.startsWith("/avatar/") ? "/avatar/:bot" : route.slice(0, 64);
+    res.on("finish", () => log(`${method} ${logRoute} ${res.statusCode}`));
 
     const json = (status: number, body: unknown) => {
       res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -146,6 +154,61 @@ export function createApp(opts: AppOptions): http.Server {
         const out: Record<string, unknown> = { ok: true, type: msg.type };
         if (msg.type === "status" && msg.step_truncated) out.step_truncated = true;
         return json(200, out);
+      }
+
+      if (route === "/avatar") {
+        if (method !== "POST") return json(405, { error: "use POST" });
+        // Como /ingest: só Bearer.
+        const b = bearer(req.headers.authorization);
+        if (b === null || !safeEqual(b, token)) {
+          req.resume();
+          return json(401, { error: "não autorizado" });
+        }
+        const ct = String(req.headers["content-type"] ?? "");
+        if (!/^image\/png\b/i.test(ct)) {
+          req.resume();
+          return json(415, { error: "Content-Type deve ser image/png" });
+        }
+        const q = new URL(req.url ?? "/", "http://x").searchParams.get("bot");
+        const h = req.headers["x-bot"];
+        let rawName: unknown = q;
+        if (rawName === null && typeof h === "string") {
+          try {
+            rawName = decodeURIComponent(h);
+          } catch {
+            req.resume();
+            return json(400, { error: "X-Bot: use o nome em UTF-8 com encodeURIComponent" });
+          }
+        }
+        if (rawName === null || rawName === undefined) {
+          req.resume();
+          return json(400, { error: "informe o bot em ?bot= ou no cabeçalho X-Bot" });
+        }
+        const name = botName(rawName, "bot");
+        const png = await readRaw(req, AVATAR_MAX);
+        if (png.length < PNG_SIG.length || !png.subarray(0, 8).equals(PNG_SIG))
+          return json(400, { error: "o corpo não é um PNG" });
+        try {
+          await store.putAvatar(name, png);
+        } catch {
+          return json(500, { error: "falha ao salvar a foto" });
+        }
+        return json(200, { ok: true, bot: name, bytes: png.length });
+      }
+
+      if (route.startsWith("/avatar/")) {
+        if (method !== "GET" && method !== "HEAD") return json(405, { error: "use GET" });
+        if (!authed(req)) return json(401, { error: "não autorizado" });
+        let name: string;
+        try {
+          name = decodeURIComponent(route.slice("/avatar/".length));
+        } catch {
+          return json(404, { error: "não encontrado" });
+        }
+        const png = await store.getAvatar(name);
+        if (!png) return json(404, { error: "não encontrado" });
+        res.writeHead(200, { "Content-Type": "image/png", "Content-Length": String(png.length) });
+        return res.end(method === "HEAD" ? undefined : png);
       }
 
       if (route === "/api/state") {
