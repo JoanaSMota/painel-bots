@@ -25,6 +25,7 @@ export interface StepEntry {
 }
 
 export const RECENT_MAX = 10;
+export const RESOLVED_STEP = "Resolvido pelo Lucas no painel";
 export const FEED_MAX = 50;
 
 export interface State {
@@ -162,6 +163,18 @@ export class Store {
         break;
     }
     this.state.updated_at = at;
+  }
+
+  /**
+   * Botão "Resolvido" do painel: tira o bot de waiting_user e põe em idle,
+   * registrando o passo em recent e na Atividade (mesmo caminho do /ingest).
+   */
+  resolve(name: string, now = new Date()): "ok" | "desconhecido" | "nao_esperando" {
+    const b = this.state.bots[name];
+    if (!b) return "desconhecido";
+    if (b.status !== "waiting_user") return "nao_esperando";
+    this.apply({ type: "status", bot: name, status: "idle", step: RESOLVED_STEP, step_truncated: false }, now);
+    return "ok";
   }
 
   async putAvatar(bot: string, png: Buffer, now = new Date()): Promise<void> {

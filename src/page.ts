@@ -58,6 +58,7 @@ button,.btn{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:7px 
 .fresco{margin-top:8px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px}.fresco>span:first-child{opacity:.8}
 .selo-velho{display:inline-block;background:rgba(0,0,0,.72);color:#fcd34d;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;white-space:nowrap}
 .item .t3{display:flex;align-items:center;gap:6px;margin-top:3px}.espera .selo-velho{background:rgba(245,158,11,.16);color:#fcd34d;box-shadow:inset 0 0 0 1px rgba(245,158,11,.55)}
+.sel-cab .resolver{margin-top:10px;width:100%;background:#1a1300;color:#fcd34d;font-weight:700}.sel-cab .resolver:hover{background:#000}.sel-cab .resolver.conf{background:#fff;color:#111}.sel-cab .resolver:disabled{opacity:.6;cursor:default}
 .sel-cab.s-error,.sel-cab.s-none,.sel-cab.s-idle,.sel-cab.s-done{color:#fff}.fechar{margin-left:auto;align-self:flex-start;background:rgba(0,0,0,.12);color:inherit;border-radius:8px;padding:2px 8px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
 .stats div{background:var(--card2);border-radius:10px;padding:8px}.stats b{display:block;font-size:16px}.stats small{color:var(--mut);font-size:11px}
@@ -418,7 +419,7 @@ function desenhar(){
   var l1=el('div','l1');l1.appendChild(boneco(botSel,b,44));var nm=el('div');nm.appendChild(el('div','nome',botSel));
   nm.appendChild(el('div','sub',(b.team||SEM)+' · mesa '+(andar.bots.indexOf(botSel)+1)));l1.appendChild(nm);cab.appendChild(l1);
   cab.appendChild(el('span','chip',NOME_ST[s]+(b.status_at?' · '+dur(b.status_at):'')));
-  if(b.step)cab.appendChild(el('div','passo',b.step));
+  if(b.step)cab.appendChild(el('div','passo',b.step));if(s==='waiting_user')cab.appendChild(botaoResolver(botSel));
   var fz=frescor(b.status_at,s,Date.now()),fq=el('div','fresco');fq.appendChild(el('span',null,fz.texto));if(fz.velho)fq.appendChild(selo());if(b.status_at)fq.title='Última atualização de status: '+fData.format(new Date(b.status_at));cab.appendChild(fq);dir.appendChild(cab);
   var det=el('section','card'),stt3=el('div','stats'),u=st.usage,rec=b.recent||[];
   [[rec.length,'passos recentes'],[(b.routines||[]).length,'rotinas'],[u&&u.bots&&u.bots[botSel]!=null?u.bots[botSel]+'%':'—','do consumo']].forEach(function(x){var d=el('div');d.appendChild(el('b',null,x[0]));d.appendChild(el('small',null,x[1]));stt3.appendChild(d);});
@@ -439,6 +440,15 @@ function desenhar(){
  if(!rot.length)rc[1].appendChild(el('div','vazio','Nenhuma rotina informada.'));dir.appendChild(rc[0]);
 
  cena(andar.bots);}
+// botão "Resolvido": 1º clique pede confirmação, 2º envia POST /api/resolve (cookie + mesma origem)
+function botaoResolver(nome){var bt=el('button','resolver','✓ Resolvido'),conf=false,tm=0;bt.type='button';bt.title='Marca que você já respondeu: o bot sai de "Esperando por mim" e fica descansando.';
+ bt.addEventListener('click',function(ev){ev.stopPropagation();if(bt.disabled)return;
+  if(!conf){conf=true;bt.classList.add('conf');bt.textContent='Confirmar: já resolvi';tm=setTimeout(function(){conf=false;bt.classList.remove('conf');bt.textContent='✓ Resolvido';},5000);return;}
+  clearTimeout(tm);bt.disabled=true;bt.textContent='Salvando…';
+  fetch('/api/resolve',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify({bot:nome})})
+   .then(function(r){if(r.status===401){location.href='/';return;}if(!r.ok)throw new Error(String(r.status));load();})
+   .catch(function(){bt.disabled=false;conf=false;bt.classList.remove('conf');bt.textContent='Falhou. Tentar de novo';});});
+ return bt;}
 function relogio(){document.getElementById('hora').textContent=fHora.format(new Date());}
 function load(){fetch('/api/state',{credentials:'same-origin',cache:'no-store'}).then(function(r){if(r.status===401){location.href='/';return null;}return r.json();})
  .then(function(s){if(!s)return;st=s;setTimeout(desenhar,Math.max(0,ocupado-Date.now()));document.getElementById('vivo').lastChild.textContent=' Ao vivo · ';})
