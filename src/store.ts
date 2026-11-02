@@ -1,6 +1,7 @@
 // Estado do painel: arquivo JSON em DATA_DIR (volume do Railway) com escrita atômica,
 // ou só memória quando DATA_DIR não está definido/gravável.
 import { promises as fs } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import type { Msg, Status } from "./validate.js";
 
@@ -13,7 +14,18 @@ export interface BotState {
   look?: { shape: string; color: string; accessory: string };
   team?: string;
   chat?: string;
+  /** Últimos passos (mais novo primeiro), guardados pelo servidor. */
+  recent?: StepEntry[];
 }
+
+export interface StepEntry {
+  at: string;
+  status: Status;
+  step: string;
+}
+
+export const RECENT_MAX = 10;
+export const FEED_MAX = 50;
 
 export interface State {
   version: 1;
@@ -21,15 +33,38 @@ export interface State {
   roster: string[] | null;
   usage: { total_used_pct: number; resets_at: string; bots: Record<string, number>; at: string } | null;
   updated_at: string | null;
+  /** Ordem dos andares (times). Opcional, vem de groups.floors. */
+  floors: string[] | null;
+  /** Atividade global (mais novo primeiro). */
+  feed: (StepEntry & { bot: string })[];
+  /** Bots com foto enviada: nome → data do envio. */
+  avatars: Record<string, string>;
 }
 
 export function emptyState(): State {
-  return { version: 1, bots: Object.create(null), roster: null, usage: null, updated_at: null };
+  return {
+    version: 1,
+    bots: Object.create(null),
+    roster: null,
+    usage: null,
+    updated_at: null,
+    floors: null,
+    feed: [],
+    avatars: Object.create(null),
+  };
+}
+
+export const AVATAR_MAX = 512 * 1024;
+
+function avatarFile(bot: string): string {
+  return createHash("sha256").update(bot, "utf8").digest("hex") + ".png";
 }
 
 export class Store {
   state: State = emptyState();
   private file: string | null = null;
+  private avatarDir: string | null = null;
+  private avatarMem = new Map<string, Buffer>();
   private chain: Promise<void> = Promise.resolve();
   mode: "arquivo" | "memória" = "memória";
 
@@ -45,11 +80,21 @@ export class Store {
       await fs.rm(probe);
       s.file = file;
       s.mode = "arquivo";
+      s.avatarDir = path.join(dataDir, "avatars");
+      await fs.mkdir(s.avatarDir, { recursive: true });
       try {
         const raw = await fs.readFile(file, "utf8");
         const parsed = JSON.parse(raw) as State;
         if (parsed && parsed.version === 1 && typeof parsed.bots === "object") {
-          s.state = { ...emptyState(), ...parsed, bots: Object.assign(Object.create(null), parsed.bots) };
+          const base = emptyState();
+          s.state = {
+            ...base,
+            ...parsed,
+            bots: Object.assign(Object.create(null), parsed.bots),
+            feed: Array.isArray(parsed.feed) ? parsed.feed : [],
+            floors: Array.isArray(parsed.floors) ? parsed.floors : null,
+            avatars: Object.assign(Object.create(null), parsed.avatars ?? {}),
+          };
         } else throw new Error("formato");
       } catch (e: unknown) {
         if ((e as NodeJS.ErrnoException).code !== "ENOENT") {
@@ -60,6 +105,7 @@ export class Store {
     } catch {
       console.warn("DATA_DIR não gravável; usando só memória");
       s.file = null;
+      s.avatarDir = null;
       s.mode = "memória";
     }
     return s;
@@ -79,9 +125,17 @@ export class Store {
     switch (m.type) {
       case "status": {
         const b = this.bot(m.bot);
+        const last = b.recent?.[0];
         b.status = m.status;
         b.step = m.step;
         b.status_at = at;
+        const entry: StepEntry = { at, status: m.status, step: m.step };
+        if (last && last.status === m.status && last.step === m.step) {
+          last.at = at; // mesmo passo repetido: só atualiza a hora
+        } else {
+          b.recent = [entry, ...(b.recent ?? [])].slice(0, RECENT_MAX);
+          this.state.feed = [{ bot: m.bot, ...entry }, ...this.state.feed].slice(0, FEED_MAX);
+        }
         break;
       }
       case "routines": {
@@ -98,6 +152,7 @@ export class Store {
         break;
       case "groups":
         for (const [n, team] of Object.entries(m.bots)) this.bot(n).team = team;
+        if (m.floors) this.state.floors = m.floors;
         break;
       case "chat":
         for (const [n, link] of Object.entries(m.bots)) this.bot(n).chat = link;
@@ -107,6 +162,30 @@ export class Store {
         break;
     }
     this.state.updated_at = at;
+  }
+
+  async putAvatar(bot: string, png: Buffer, now = new Date()): Promise<void> {
+    if (this.avatarDir) {
+      const file = path.join(this.avatarDir, avatarFile(bot));
+      const tmp = `${file}.tmp-${process.pid}`;
+      await fs.writeFile(tmp, png, { mode: 0o600 });
+      await fs.rename(tmp, file);
+    } else {
+      this.avatarMem.set(bot, png);
+    }
+    this.state.avatars[bot] = now.toISOString();
+    this.state.updated_at = now.toISOString();
+    await this.persist();
+  }
+
+  async getAvatar(bot: string): Promise<Buffer | null> {
+    if (!this.state.avatars[bot]) return null;
+    if (!this.avatarDir) return this.avatarMem.get(bot) ?? null;
+    try {
+      return await fs.readFile(path.join(this.avatarDir, avatarFile(bot)));
+    } catch {
+      return null;
+    }
   }
 
   /** Grava de forma atômica (tmp + fsync + rename), serializando as escritas. */

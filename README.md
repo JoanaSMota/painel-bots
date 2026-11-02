@@ -16,9 +16,12 @@ pronto para o Railway. Recebe atualizações em `POST /ingest` e mostra o painel
 - `POST /ingest`: só `Authorization: Bearer <PAINEL_TOKEN>` (cookie não vale), `Content-Type: application/json`, corpo até 64 KB. Retorna 401 sem chave, 400 com o erro do campo, 413 se for grande demais.
 - `GET /`: tela de login (nenhum dado) ou o painel. O login grava um cookie `HttpOnly; Secure; SameSite=Strict` com um HMAC da chave, nunca a chave. Também aceita Bearer.
 - `GET /api/state`: estado em JSON, protegido. O painel atualiza a cada 30 s.
+- `POST /avatar?bot=<nome>` (ou header `X-Bot: <nome em encodeURIComponent>`): foto do boneco. Só Bearer, `Content-Type: image/png`, até 512 KB (reduza para ~256 px antes). 401/415/400/413 nos erros. Gravada em `DATA_DIR/avatars/<sha256 do nome>.png`.
+- `GET /avatar/<nome>`: a foto, protegida por cookie ou Bearer (sem login → 401). Nada é público.
 - `GET /health`: público, retorna só `{"ok":true}`.
 
-O painel separa os bots por time ("andares"). Quem não tem time fica em "Sem time". Horários aparecem em America/Recife.
+O painel separa os bots por time ("andares"). Quem não tem time fica em "Sem time". Sem `floors`, os andares vão em ordem alfabética; com `floors`, seguem a lista, os times fora dela vêm depois e "Sem time" fica por último.
+Cada bot guarda os últimos 10 passos (`recent`) e o estado guarda um feed global dos últimos 50 (`feed`), mostrados em "Passos recentes" e "Atividade". Um status igual ao anterior só atualiza o horário. Horários aparecem em America/Recife.
 Quando existe `roster`, só os bots da lista aparecem.
 
 ## Privacidade
@@ -48,11 +51,16 @@ curl -sS "${H[@]}" -X POST "$URL/ingest" -d '{"type":"routines","bot":"Donna","i
 # roster: lista de bots exibidos
 curl -sS "${H[@]}" -X POST "$URL/ingest" -d '{"type":"roster","names":["Donna","Grok Bot","Diretor Agentes"]}'
 
-# looks: shape (circle|square|rounded|triangle|diamond|hexagon|star), color em hex, accessory
-curl -sS "${H[@]}" -X POST "$URL/ingest" -d '{"type":"looks","bots":{"Donna":{"shape":"star","color":"#ff8800","accessory":"fone"}}}'
+# looks: shape do app (blob|squircle|tablet|pill|pebble|hex|star|flower|house|cloud) ou antigas (circle|square|rounded|triangle|diamond|hexagon)
+#        color em hex ou nomeada do app (violet|blue|cyan|green|orange|red|black|gray); sem look = blob + violet
+curl -sS "${H[@]}" -X POST "$URL/ingest" -d '{"type":"looks","bots":{"Gmail":{"shape":"pebble","color":"red","accessory":"none"},"Donna":{"shape":"star","color":"#ff8800"}}}'
 
-# groups: time de cada bot (cada time vira um andar)
+# avatar: PNG até 512 KB, vira o rosto do boneco
+curl -sS -X POST "$URL/avatar?bot=Donna%20Secret%C3%A1ria" -H "Authorization: Bearer $K" -H "Content-Type: image/png" --data-binary @avatar.png
+
+# groups: time de cada bot (cada time vira um andar); floors opcional define a ordem (até 50)
 curl -sS "${H[@]}" -X POST "$URL/ingest" -d '{"type":"groups","bots":{"Donna":"Operação","Grok Bot":"Dev"}}'
+curl -sS "${H[@]}" -X POST "$URL/ingest" -d '{"type":"groups","bots":{"CEO ANA":"ANA","Donna":"Personal"},"floors":["ANA","Personal","Research","Tech","Ops"]}'
 
 # chat: link precisa começar com grokbot://app/v1/agent?id=
 curl -sS "${H[@]}" -X POST "$URL/ingest" -d '{"type":"chat","bots":{"Donna":"grokbot://app/v1/agent?id=SEU-ID"}}'

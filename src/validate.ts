@@ -12,6 +12,9 @@ export const CHAT_PREFIX = "grokbot://app/v1/agent?id=";
 const CHAT_ID_RE = /^[A-Za-z0-9_-]{1,100}$/;
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 const SHAPE_RE = /^[a-z][a-z0-9_-]{0,19}$/;
+/** Cores nomeadas do app Grok Bot (além de hex). */
+export const NAMED_COLORS = ["violet", "blue", "cyan", "green", "orange", "red", "black", "gray"] as const;
+export const MAX_FLOORS = 50;
 // eslint-disable-next-line no-control-regex
 const CONTROL_RE = /[\u0000-\u001f\u007f]/;
 
@@ -20,7 +23,7 @@ export type Msg =
   | { type: "routines"; bot: string; items: { name: string; schedule: string; next_run: string | null }[] }
   | { type: "roster"; names: string[] }
   | { type: "looks"; bots: Record<string, { shape: string; color: string; accessory: string }> }
-  | { type: "groups"; bots: Record<string, string> }
+  | { type: "groups"; bots: Record<string, string>; floors?: string[] }
   | { type: "chat"; bots: Record<string, string> }
   | { type: "usage"; total_used_pct: number; resets_at: string; bots: Record<string, number> };
 
@@ -49,7 +52,7 @@ function str(v: unknown, field: string, min: number, max: number): string {
   return s;
 }
 
-function botName(v: unknown, field: string): string {
+export function botName(v: unknown, field: string): string {
   return str(v, field, 1, NAME_MAX);
 }
 
@@ -131,16 +134,23 @@ export function parseMessage(raw: unknown): Msg {
         onlyKeys(v, ["shape", "color", "accessory"], f);
         const shape = str(v.shape, `${f}.shape`, 1, 20).toLowerCase();
         if (!SHAPE_RE.test(shape)) fail(`${f}.shape: use letras minúsculas, números, - ou _`);
-        const color = str(v.color, `${f}.color`, 4, 7);
-        if (!HEX_RE.test(color)) fail(`${f}.color: cor hex inválida (ex.: #3366ff)`);
+        const color = str(v.color, `${f}.color`, 3, 7).toLowerCase();
+        const named = (NAMED_COLORS as readonly string[]).includes(color === "grey" ? "gray" : color);
+        if (!HEX_RE.test(color) && !named)
+          fail(`${f}.color: use hex (ex.: #3366ff) ou um nome: ${NAMED_COLORS.join("|")}`);
         const accessory = v.accessory === undefined ? "" : str(v.accessory, `${f}.accessory`, 0, 40);
-        return { shape, color: color.toLowerCase(), accessory };
+        return { shape, color: color === "grey" ? "gray" : color, accessory };
       });
       return { type, bots };
     }
     case "groups": {
-      onlyKeys(raw, ["type", "bots"], "groups");
-      return { type, bots: botMap(raw.bots, "bots", (v, f) => str(v, f, 1, NAME_MAX)) };
+      onlyKeys(raw, ["type", "bots", "floors"], "groups");
+      const bots = botMap(raw.bots, "bots", (v, f) => str(v, f, 1, NAME_MAX));
+      if (raw.floors === undefined) return { type, bots };
+      if (!Array.isArray(raw.floors)) fail("floors: deve ser lista de nomes de time");
+      if (raw.floors.length > MAX_FLOORS) fail(`floors: máximo de ${MAX_FLOORS}`);
+      const floors = [...new Set(raw.floors.map((t, i) => str(t, `floors[${i}]`, 1, NAME_MAX)))];
+      return { type, bots, floors };
     }
     case "chat": {
       onlyKeys(raw, ["type", "bots"], "chat");
