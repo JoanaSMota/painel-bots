@@ -168,6 +168,10 @@ export function createApp(opts: AppOptions): http.Server {
         }
         const out: Record<string, unknown> = { ok: true, type: msg.type };
         if (msg.type === "status" && msg.step_truncated) out.step_truncated = true;
+        if (msg.type === "handoff") {
+          out.id = store.state.handoffs[0]?.id;
+          if (msg.task_truncated) out.task_truncated = true;
+        }
         return json(200, out);
       }
 
@@ -229,6 +233,7 @@ export function createApp(opts: AppOptions): http.Server {
       if (route === "/api/state") {
         if (method !== "GET") return json(405, { error: "use GET" });
         if (!authed(req)) return json(401, { error: "não autorizado" });
+        store.pruneHandoffs();
         return json(200, store.state);
       }
 
