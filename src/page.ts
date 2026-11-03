@@ -3,6 +3,7 @@
 // e atributos SVG. Sem CDN nem dependências: tudo inline (SVG + CSS).
 import { floorOrder } from "./floors.js";
 import { frescor } from "./frescor.js";
+import { sofaLugares } from "./cafe.js";
 
 const STYLE = String.raw`
 :root{--bg:#e9ecf1;--card:#16181d;--card2:#1f2229;--line:#2b2f38;--txt:#f3f4f6;--mut:#9aa1ad;
@@ -85,6 +86,7 @@ button,.btn{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:7px 
 @keyframes pisca{0%,80%,100%{opacity:.25}40%{opacity:1}}
 .passante{pointer-events:none}.passante text{font:600 11px Inter,system-ui,sans-serif}.passante text.l2{font:500 10px Inter,system-ui,sans-serif}
 .bot-g.recebe .hov{animation:recebe .55s ease-in-out 3}@keyframes recebe{50%{transform:translateY(-0.12px) scale(1.05)}}
+.vapor path{opacity:.55;animation:vapor 2.6s ease-in-out infinite}@keyframes vapor{0%{opacity:0;transform:translateY(0.05px)}35%{opacity:.8}100%{opacity:0;transform:translateY(-0.3px)}}
 .sel-cab.s-waiting_user{box-shadow:0 0 0 2px #fcd34d,0 12px 32px rgba(245,158,11,.35)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 @media (prefers-reduced-motion:reduce){.bot-g:hover .hov,.balao.sobe{transform:none}}
@@ -228,9 +230,16 @@ function laptop(par,x,y,s){var z=1.05,on=s==='working';
  quad(par,[[x-0.32,y-0.05,z],[x+0.32,y-0.05,z],[x+0.32,y-0.05,z+0.42],[x-0.32,y-0.05,z+0.42]],on?'#2b3340':'#3d4350');
  if(on)sv('polyline',{points:pts([[x-0.32,y-0.05,z+0.42],[x+0.32,y-0.05,z+0.42]]),stroke:'#86efac','stroke-width':0.035,fill:'none',class:'brilho'},par);
  var c=P(x,y-0.05,z+0.24);sv('circle',{cx:c[0],cy:c[1],r:on?0.07:0.05,fill:COR_LAP[s]||'#6b7280',class:on?'tela':''},par);}
-function sofa(par,x,y){var b=P(x+0.6,y+1.1,0);sv('ellipse',{cx:b[0],cy:b[1]+0.1,rx:1.8,ry:0.9,fill:'#0f172a','fill-opacity':.1,filter:'url(#blur)'},par);
+function sofa(par,x,y,meio){var b=P(x+0.6,y+1.1,0);sv('ellipse',{cx:b[0],cy:b[1]+0.1,rx:1.8,ry:0.9,fill:'#0f172a','fill-opacity':.1,filter:'url(#blur)'},par);
  caixa(par,x,y,0,x+1.2,y+0.28,0.75,'#ffffff','#eef0f3','#e2e5ea');caixa(par,x,y+0.28,0,x+0.95,y+1.92,0.45,'#ffffff','#eef0f3','#e5e8ec');
- caixa(par,x+0.95,y+0.28,0,x+1.2,y+1.92,0.95,'#ffffff','#eef0f3','#e2e5ea');caixa(par,x,y+1.92,0,x+1.2,y+2.2,0.75,'#ffffff','#eef0f3','#e2e5ea');}
+ caixa(par,x+0.95,y+0.28,0,x+1.2,y+1.92,0.95,'#ffffff','#eef0f3','#e2e5ea');if(meio)meio();caixa(par,x,y+1.92,0,x+1.2,y+2.2,0.75,'#ffffff','#eef0f3','#e2e5ea');}
+// xícara de café (com vapor opcional); x,y = fundo da xícara, w = largura
+function caneca(par,x,y,w,vapor){var h=w*1.05,g=sv('g',{class:'caneca'},par);
+ if(vapor){var vg=sv('g',{class:'vapor'},g);[-0.22,0.22].forEach(function(d,i){var vx=x+d*w,vy=y-h-w*0.15;
+  var pa=sv('path',{d:'M'+vx.toFixed(3)+' '+vy.toFixed(3)+' q '+(0.22*w).toFixed(3)+' '+(-0.35*w).toFixed(3)+' 0 '+(-0.7*w).toFixed(3)+' q '+(-0.22*w).toFixed(3)+' '+(-0.35*w).toFixed(3)+' 0 '+(-0.7*w).toFixed(3),fill:'none',stroke:'#94a3b8','stroke-width':(w*0.14).toFixed(3),'stroke-linecap':'round'},vg);pa.style.animationDelay=(-i*1.3)+'s';});}
+ sv('ellipse',{cx:x+w*0.52,cy:y-h*0.5,rx:w*0.26,ry:w*0.3,fill:'none',stroke:'#e2e8f0','stroke-width':(w*0.16).toFixed(3)},g);
+ sv('rect',{x:x-w/2,y:y-h,width:w,height:h,rx:w*0.18,fill:'#ffffff',stroke:'#cbd5e1','stroke-width':(w*0.06).toFixed(3)},g);
+ sv('ellipse',{cx:x,cy:y-h,rx:w/2,ry:w*0.17,fill:'#7c4a1e',stroke:'#cbd5e1','stroke-width':(w*0.05).toFixed(3)},g);return g;}
 function poltrona(par,x,y){var b=P(x+0.45,y+0.45,0);sv('ellipse',{cx:b[0],cy:b[1]+0.1,rx:0.9,ry:0.45,fill:'#0f172a','fill-opacity':.14,filter:'url(#blur)'},par);
  caixa(par,x,y,0,x+0.85,y+0.85,0.42,'#3a3f4a','#2b2f38','#23272f');caixa(par,x,y,0,x+0.85,y+0.18,0.8,'#3a3f4a','#2b2f38','#23272f');
  caixa(par,x,y+0.18,0,x+0.18,y+0.85,0.62,'#3a3f4a','#2b2f38','#23272f');caixa(par,x+0.67,y+0.18,0,x+0.85,y+0.85,0.62,'#3a3f4a','#2b2f38','#23272f');}
@@ -296,7 +305,25 @@ function cena(lista){
  quad(eg,[[0,ey0,0],[0,(ey0+ey1)/2,0],[0,(ey0+ey1)/2,2.1],[0,ey0,2.1]],'#c9d0da');
  quad(eg,[[0,(ey0+ey1)/2,0],[0,ey1,0],[0,ey1,2.1],[0,(ey0+ey1)/2,2.1]],'#bcc4cf');
  sv('polyline',{points:pts([[0,(ey0+ey1)/2,0],[0,(ey0+ey1)/2,2.1]]),stroke:'#8b95a5','stroke-width':0.03,fill:'none'},eg);
- var el1=P(0,(ey0+ey1)/2,2.2);sv('circle',{cx:el1[0],cy:el1[1],r:0.07,fill:passAt&&passAt.modo!=='mesmo'?'#22c55e':'#cbd5e1'},eg);
+ var el1=P(0,(ey0+ey1)/2,2.2);sv('circle',{cx:el1[0],cy:el1[1],r:0.07,fill:passAt&&(passAt.modo==='sai'||passAt.modo==='entra')?'#22c55e':'#cbd5e1'},eg);
+ // café: sofá e poltrona; xr = corredor entre as mesas e o sofá, yf = faixa da frente
+ var sx=RW-1.5,sy=RD-3.0,px=MX+L*0.55,py=RD-1.25,xr=RW-1.85,yf=RD-0.2;
+ // 3 lugares por andar (ASSENTOS): ponta de trás do sofá, poltrona, ponta da frente (o meio do sofá ficaria espremido)
+ var assentos=[{x:sx+0.48,y:sy+0.28+1.64/6,z:0.45,tipo:'sofa'},{x:px+0.425,y:py+0.55,z:0.42,tipo:'poltrona'},{x:sx+0.48,y:sy+0.28+1.64*5/6,z:0.45,tipo:'sofa'}];
+ var sentados={};lista.forEach(function(nn){var si=noSofa[nn];if(si!=null&&assentos[si])sentados[si]=nn;});
+ // desenha um bot (na mesa ou no café): grupo clicável, balão e anel de seleção
+ function poeBot(par,anelPar,nome,x,y,z,tam,naCafe){var b=bot(nome),s=stt(nome),base=P(x,y,z),fp=P(x,y,naCafe?z:0);
+  var bg=sv('g',{class:'bot-g '+s+(naCafe?' cafe':'')},par);bgs[nome]=bg;bg.addEventListener('click',function(ev){ev.stopPropagation();focar(nome);});
+  bg.addEventListener('mouseenter',function(){if(bm[nome])bm[nome].classList.add('sobe');});bg.addEventListener('mouseleave',function(){if(bm[nome])bm[nome].classList.remove('sobe');});
+  if(s==='working'||s==='waiting_user'||s==='error'){var mc=P(x,y,z+tam*0.5);sv('ellipse',{cx:mc[0],cy:mc[1],rx:tam*0.72,ry:tam*0.72,fill:'url(#gl'+s+')',class:'brilho'},bg);}
+  sv('ellipse',{cx:base[0],cy:base[1]+0.02,rx:0.42,ry:0.17,fill:'#0f172a','fill-opacity':.18,filter:'url(#blur)'},bg);
+  var corpo=sv('g',{class:'corpo-bot'},sv('g',{class:'hov'},bg)),rs=sv('g',{class:'respira'},corpo),hs=0;
+  for(var hi=0;hi<nome.length;hi++)hs=(hs*31+nome.charCodeAt(hi))%997;rs.style.animationDelay=(-((hs/97+Date.now()/1000)%3.2)).toFixed(2)+'s';
+  if(nome===zoom)alvo=[ox+base[0]*k,oy+(base[1]-tam*0.5)*k];
+  var fig=boneco(nome,b,tam);fig.setAttribute('x',(base[0]-tam/2).toFixed(3));fig.setAttribute('y',(base[1]-tam*0.98).toFixed(3));rs.appendChild(fig);
+  if(naCafe)caneca(bg,base[0]+tam*0.4,base[1]-tam*0.16,tam*0.2,1);
+  if(nome===botSel){sv('ellipse',{cx:fp[0],cy:fp[1],rx:0.7,ry:0.35,fill:'none',stroke:'#111827','stroke-width':0.05,'stroke-dasharray':'0.14 0.09'},anelPar);}
+  var topo=P(x,y,z+tam*0.96);bals.push({nome:nome,s:s,at:b.status_at,step:b.step,cafe:!!naCafe,x:ox+topo[0]*k,y:oy+topo[1]*k});}
  // mesas
  var lugares=[],mesas=[];
  for(var m=0;m<nm;m++){var r=Math.floor(m/cols),c=m%cols;mesas.push({x:MX-0.6+c*(L+CG),y:MY+r*RG});}
@@ -308,30 +335,21 @@ function cena(lista){
   // sombra da mesa
   quad(tg,[[t.x+0.2,t.y+0.25,0],[t.x+L+0.35,t.y+0.25,0],[t.x+L+0.35,t.y+TW+0.45,0],[t.x+0.2,t.y+TW+0.45,0]],'#0f172a',{'fill-opacity':.07,filter:'url(#blur)'});
   lugares.forEach(function(l,li){if(l.mesa!==mi)return;var nome=mapa[li];if(nome!==undefined)lug[nome]={x:l.x,y:l.y};
-   var s=nome!==undefined?stt(nome):'',fp=P(l.x,l.y,0);
+   var cafe=nome!==undefined&&noSofa[nome]!=null&&sentados[noSofa[nome]]===nome,s=nome!==undefined&&!cafe?stt(nome):'',fp=P(l.x,l.y,0);
    if(s==='working')sv('ellipse',{cx:fp[0],cy:fp[1],rx:0.85,ry:0.45,fill:'url(#glworking)'},tg);
    if(s==='waiting_user'||s==='error'){sv('ellipse',{cx:fp[0],cy:fp[1],rx:0.85,ry:0.45,fill:'url(#gl'+s+')'},tg);
     sv('ellipse',{cx:fp[0],cy:fp[1],rx:0.7,ry:0.36,fill:'none',stroke:COR_ST[s],'stroke-width':0.07,class:'anel'},tg);}
-   if(nome!==undefined)sv('ellipse',{cx:fp[0],cy:fp[1]+0.03,rx:0.45,ry:0.22,fill:'#0f172a','fill-opacity':.16,filter:'url(#blur)'},tg);
+   if(nome!==undefined&&!cafe)sv('ellipse',{cx:fp[0],cy:fp[1]+0.03,rx:0.45,ry:0.22,fill:'#0f172a','fill-opacity':.16,filter:'url(#blur)'},tg);
    banco(tg,l.x,l.y,0.55);
-   if(nome!==undefined){var b=bot(nome),tam=1.42,base=P(l.x,l.y,0.55);
-    var bg=sv('g',{class:'bot-g '+s},tg);bgs[nome]=bg;bg.addEventListener('click',function(ev){ev.stopPropagation();focar(nome);});
-    bg.addEventListener('mouseenter',function(){if(bm[nome])bm[nome].classList.add('sobe');});bg.addEventListener('mouseleave',function(){if(bm[nome])bm[nome].classList.remove('sobe');});
-    if(s==='working'||s==='waiting_user'||s==='error'){var mc=P(l.x,l.y,0.55+tam*0.5);sv('ellipse',{cx:mc[0],cy:mc[1],rx:tam*0.72,ry:tam*0.72,fill:'url(#gl'+s+')',class:'brilho'},bg);}
-    sv('ellipse',{cx:base[0],cy:base[1]+0.02,rx:0.42,ry:0.17,fill:'#0f172a','fill-opacity':.18,filter:'url(#blur)'},bg);
-    var corpo=sv('g',{class:'corpo-bot'},sv('g',{class:'hov'},bg)),rs=sv('g',{class:'respira'},corpo),hs=0;
-    for(var hi=0;hi<nome.length;hi++)hs=(hs*31+nome.charCodeAt(hi))%997;rs.style.animationDelay=(-((hs/97+Date.now()/1000)%3.2)).toFixed(2)+'s';
-    if(nome===zoom)alvo=[ox+base[0]*k,oy+(base[1]-tam*0.5)*k];
-    var fig=boneco(nome,b,tam);fig.setAttribute('x',(base[0]-tam/2).toFixed(3));fig.setAttribute('y',(base[1]-tam*0.98).toFixed(3));rs.appendChild(fig);
-    if(nome===botSel){sv('ellipse',{cx:fp[0],cy:fp[1],rx:0.7,ry:0.35,fill:'none',stroke:'#111827','stroke-width':0.05,'stroke-dasharray':'0.14 0.09'},tg);}
-    var topo=P(l.x,l.y,0.55+tam*0.96);bals.push({nome:nome,s:s,at:b.status_at,step:b.step,x:ox+topo[0]*k,y:oy+topo[1]*k});}});
+   if(nome!==undefined&&!cafe)poeBot(tg,tg,nome,l.x,l.y,0.55,1.42,0);});
   for(var lx=0;lx<2;lx++)for(var ly=0;ly<2;ly++){var px=t.x+0.12+lx*(L-0.24),py=t.y+0.12+ly*(TW-0.24);caixa(tg,px-0.05,py-0.05,0,px+0.05,py+0.05,0.97,'#9ca3af','#a3aab5','#8b93a0');}
   caixa(tg,t.x,t.y,0.97,t.x+L,t.y+TW,1.05,'#f6efe1','#e3d9c4','#d6cab2');
   for(var lp=1;lp<LUG;lp+=2){var lc=P(t.x+0.25+GAP*lp,t.y+TW/2,1.05);sv('ellipse',{cx:lc[0],cy:lc[1],rx:1.0,ry:0.5,fill:'url(#glL)'},tg);}
   lugares.forEach(function(l,li){if(l.mesa!==mi)return;var nome=mapa[li];laptop(tg,l.x,t.y+0.3,nome!==undefined?stt(nome):'');});
   for(var s2=0;s2<LUG;s2+=2){var bx=t.x+0.25+GAP*(s2+0.5),by=t.y+TW+0.7,fb2=P(bx,by,0);sv('ellipse',{cx:fb2[0],cy:fb2[1]+0.03,rx:0.42,ry:0.2,fill:'#0f172a','fill-opacity':.1,filter:'url(#blur)'},tg);banco(tg,bx,by,0.5);}
   desenhaveis.push({d:t.x+t.y,g:tg});});
- var lz=sv('g',null,null);sofa(lz,RW-1.5,RD-3.0);poltrona(lz,MX+L*0.55,RD-1.25);planta(lz,0.9,RD-0.9);desenhaveis.push({d:RW+RD,g:lz});
+ var lz=sv('g',null,null);sofa(lz,sx,sy,function(){[0,2].forEach(function(i){var nn=sentados[i],a=assentos[i];if(nn)poeBot(lz,lz,nn,a.x,a.y,a.z,1.3,1);});});
+ poltrona(lz,px,py);if(sentados[1])poeBot(lz,lz,sentados[1],assentos[1].x,assentos[1].y,assentos[1].z,1.3,1);planta(lz,0.9,RD-0.9);desenhaveis.push({d:RW+RD,g:lz});
  desenhaveis.sort(function(a,b){return a.d-b.d;}).forEach(function(d){g.appendChild(d.g);});
  // balões (camada de cima, sem sobreposição; quem precisa de atenção escolhe lugar primeiro)
  var bl=sv('g',null,mov),postos=[],PRI={waiting_user:0,error:1,working:2,done:3,idle:4,none:5};
@@ -341,6 +359,7 @@ function cena(lista){
   if(b.s==='waiting_user')l2='esperando há '+(dur(b.at)||'0 min');
   else if(b.s==='error')l2=b.step?trunc(b.step,28):'deu erro';
   else if(b.s==='working')l2=b.step?trunc(b.step,26):'trabalhando';
+  else if(b.cafe)l2='☕ pausa pro café';
   var ic=alerta?22:0,dg=b.s==='working'?18:0;
   var w=Math.round(Math.max(nome.length*6.4,l2?l2.length*5.6+dg:0)+28+ic),h=l2?36:22,x=b.x-w/2,y=b.y-h-8;
   function bate(x,y){return postos.some(function(p){return x<p.x+p.w+3&&x+w+3>p.x&&y<p.y+p.h+2&&y+h+2>p.y;});}
@@ -379,15 +398,46 @@ function cena(lista){
  transAndar=0;
  // geometria para a animação de passagem de tarefa (sobrevive ao redesenho: o quadro recria o boneco aqui)
  var corr=[MX-1.2];if(cols>1)corr.push(MX-0.6+L+CG/2);
- geo={andar:andarSel,g:g,top:sv('g',{class:'passante'},mov),ox:ox,oy:oy,k:k,lug:lug,bgs:bgs,corr:corr,elev:{x:0.4,y:(ey0+ey1)/2}};
+ geo={andar:andarSel,g:g,top:sv('g',{class:'passante'},mov),ox:ox,oy:oy,k:k,lug:lug,bgs:bgs,corr:corr,elev:{x:0.4,y:(ey0+ey1)/2},sofa:assentos,xr:xr,yf:yf};
  if(passAt)quadroJa();}
 // ---- passagem de tarefa: o boneco levanta, anda até a mesa do outro, entrega e volta ----
 var filaPass=[],passAt=null,vistos=null,raf=0,VEL=0.0034,AY=-0.55;
+// café: noSofa = quem aparece sentado no sofá (nome → assento); alvoSofa = para onde cada um vai (inclui o que está na fila);
+// segura = quem acabou de passar/receber tarefa fica na mesa por 2 min
+var noSofa={},alvoSofa={},segura={},cafeIni=false,cafeSeq=0,ASSENTOS=3,SEGURA_MS=120000;
 function novasPassagens(hs){if(!Array.isArray(hs))return;var ids={};hs.forEach(function(h){ids[h.id]=1;});
  // 1ª carga da página: as passagens que já estavam lá não são animadas
  if(vistos===null){vistos=ids;return;}
  var novas=hs.filter(function(h){return !vistos[h.id];}).reverse();for(var k in vistos)if(!ids[k]&&!(passAt&&passAt.h.id===k))delete vistos[k];
- novas.forEach(function(h){vistos[h.id]=1;filaPass.push(h);});if(filaPass.length>8)filaPass=filaPass.slice(-8);agenda();}
+ if(novas.length){var ag=Date.now();novas.forEach(function(h){segura[h.from]=segura[h.to]=ag+SEGURA_MS;});atualizaCafe();}
+ novas.forEach(function(h){vistos[h.id]=1;filaPass.push(h);});
+ // no máximo 8 passagens esperando (os movimentos do café não são descartados)
+ var nh=filaPass.filter(function(x){return !x.cafe;}).length;while(nh>8){filaPass.splice(filaPass.findIndex(function(x){return !x.cafe;}),1);nh--;}agenda();}
+// ---- café no sofá: ocioso há 10 min ou mais levanta, pega um café e senta; ao sair de idle volta para a mesa ----
+// Só anima no andar que está na tela, depois da 1ª carga e sem movimento reduzido; no resto, muda direto.
+// Os movimentos entram na mesma fila das passagens de tarefa (um de cada vez, na ordem em que aconteceram).
+function atualizaCafe(){var agora=Date.now(),todos={};
+ times().forEach(function(t){t.bots.forEach(function(n){todos[n]=1;});
+  var anima=cafeIni&&!RM.matches&&t.nome===andarSel,atuais={};
+  t.bots.forEach(function(n){if(alvoSofa[n]!=null)atuais[n]=alvoSofa[n];});
+  var cand=t.bots.filter(function(n){return !(segura[n]>agora);}).map(function(n){return {nome:n,status:stt(n),status_at:bot(n).status_at};});
+  var novo=sofaLugares(cand,agora,ASSENTOS,atuais);
+  Object.keys(atuais).forEach(function(n){if(novo[n]!=null)return;delete alvoSofa[n];
+   if(!anima){cafeDireto(n,null);return;}
+   var iq=filaPass.findIndex(function(x){return x.cafe==='vai'&&x.from===n;});
+   if(iq>=0)filaPass.splice(iq,1);else filaPass.push({cafe:'volta',id:'cafe-'+(++cafeSeq),from:n,to:'',andar:t.nome});});
+  Object.keys(novo).forEach(function(n){if(atuais[n]!=null)return;alvoSofa[n]=novo[n];
+   if(!anima){cafeDireto(n,novo[n]);return;}
+   filaPass.push({cafe:'vai',id:'cafe-'+(++cafeSeq),from:n,to:'',seat:novo[n],andar:t.nome});});});
+ Object.keys(alvoSofa).concat(Object.keys(noSofa)).forEach(function(n){if(!todos[n]){delete alvoSofa[n];delete noSofa[n];}});
+ for(var n in segura)if(segura[n]<=agora)delete segura[n];
+ cafeIni=true;if(filaPass.length)agenda();}
+function cafeDireto(n,seat){filaPass=filaPass.filter(function(x){return !(x.cafe&&x.from===n);});
+ if(passAt&&passAt.h.cafe&&passAt.h.from===n)encerra();if(seat==null)delete noSofa[n];else noSofa[n]=seat;}
+function aplicaCafe(h){if(h.cafe==='vai')noSofa[h.from]=h.seat;else delete noSofa[h.from];}
+// da mesa até o assento: corredor de trás da fileira, corredor da direita e, para a poltrona, a faixa da frente
+function rotaSofa(a,s){var ya=a.y+AY,p=[[a.x,a.y],[a.x,ya],[geo.xr,ya]];
+ if(s.tipo==='sofa')p.push([geo.xr,s.y],[s.x,s.y]);else p.push([geo.xr,geo.yf],[s.x,geo.yf],[s.x,s.y]);return p;}
 function agenda(){if(!raf)raf=requestAnimationFrame(quadro);}
 function linhaRota(pts){var c=[0];for(var i=1;i<pts.length;i++)c.push(c[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
  return {pts:pts,len:c[c.length-1],at:function(d){d=Math.max(0,Math.min(c[c.length-1],d));for(var i=1;i<pts.length;i++)if(d<=c[i]||i===pts.length-1){var u=c[i]>c[i-1]?(d-c[i-1])/(c[i]-c[i-1]):1;
@@ -397,7 +447,7 @@ function corredor(x0,x1){return geo.corr.slice().sort(function(a,b){return (Math
 function rotaMesas(a,b){var lado=a.x>b.x?1:-1,fim=[b.x+lado*1.1,b.y-0.1],ya=a.y+AY,yb=b.y+AY,p=[[a.x,a.y],[a.x,ya]];
  if(Math.abs(ya-yb)>0.01){var c=corredor(a.x,b.x);p.push([c,ya],[c,yb]);}p.push([fim[0],yb],fim);return p;}
 function rotaElev(a){var c=geo.corr[0],e=geo.elev,ya=a.y+AY;return [[a.x,a.y],[a.x,ya],[c,ya],[c,e.y],[e.x+0.5,e.y]];}
-function planejar(h){var a=geo.lug[h.from],b=geo.lug[h.to];if(!a&&!b)return null;
+function planejar(h){if(h.cafe)return planejaCafe(h);var a=geo.lug[h.from],b=geo.lug[h.to];if(!a&&!b)return null;
  var p={h:h,andar:geo.andar,t0:performance.now(),fases:[]};
  if(RM.matches){p.modo='rm';p.fases.push({d:4500});return p;}
  function anda(r,sobe,desce,extra){var o={d:Math.min(7000,Math.max(900,r.len/VEL)),r:r,sobe:sobe,desce:desce};for(var k in extra)o[k]=extra[k];p.fases.push(o);}
@@ -414,6 +464,12 @@ function planejar(h){var a=geo.lug[h.from],b=geo.lug[h.to];if(!a&&!b)return null
   p.fases.push({d:3200,fixo:r1[r1.length-1],bal:[paraTxt,tk],recebe:1,papel:1});anda(linhaRota(r1.slice().reverse()),0,0,{});
   p.fases.push({d:700,de:fora2,ate:porta2,op0:1,op1:0});}
  return p;}
+function planejaCafe(h){var a=geo.lug[h.from],si=h.cafe==='vai'?h.seat:noSofa[h.from],s=si!=null?geo.sofa[si]:null;
+ if(geo.andar!==h.andar||!a||!s||RM.matches){aplicaCafe(h);setTimeout(desenhar,0);return null;}
+ var p={h:h,andar:geo.andar,t0:performance.now(),fases:[],modo:'cafe'},r=linhaRota(rotaSofa(a,s)),d=Math.min(7000,Math.max(900,r.len/VEL));
+ if(h.cafe==='vai')p.fases.push({d:d,r:r,sobe:1,desce:1,zs:0.55,zd:s.z,cafe:1,bal:[h.from,'☕ indo tomar um café']});
+ else p.fases.push({d:d,r:linhaRota(r.pts.slice().reverse()),sobe:1,desce:1,zs:s.z,zd:0.55,bal:[h.from,'voltando pra mesa']});
+ return p;}
 function quadro(){raf=0;quadroJa();if(passAt||filaPass.length)agenda();}
 function quadroJa(){
  if(!passAt){if(!filaPass.length||!geo||Date.now()<ocupado)return;var h=filaPass.shift();passAt=planejar(h);if(!passAt)return;}
@@ -424,7 +480,7 @@ function quadroJa(){
  if(p.modo==='rm'){desenhaRM(p,a,b,t);return;}
  var x,y,z=0,op=1,bob=0,tilt=0;
  if(f.r){var dd=u*f.r.len,q=f.r.at(dd);x=q[0];y=q[1];
-  if(f.sobe)z=0.55*Math.max(0,1-dd/0.55);if(f.desce)z=0.55*Math.max(0,1-(f.r.len-dd)/0.55);
+  if(f.sobe)z=(f.zs!=null?f.zs:0.55)*Math.max(0,1-dd/0.55);if(f.desce)z=Math.max(z,(f.zd!=null?f.zd:0.55)*Math.max(0,1-(f.r.len-dd)/0.55));
   var w=performance.now()/1000*Math.PI*3.2;bob=Math.abs(Math.sin(w))*0.12;tilt=Math.sin(w)*5;}
  else if(f.fixo){x=f.fixo[0];y=f.fixo[1];}
  else{x=f.de[0]+(f.ate[0]-f.de[0])*u;y=f.de[1]+(f.ate[1]-f.de[1])*u;}
@@ -435,9 +491,10 @@ function quadroJa(){
  var wk=p.wk;if(!wk||wk.parentNode!==geo.g){wk=p.wk=sv('g',{class:'passante','data-pass':h.id},geo.g);p.wkSombra=sv('ellipse',{rx:0.42,ry:0.17,fill:'#0f172a','fill-opacity':.22},wk);
   p.wkFig=sv('g',null,wk);var tam=1.36,fig=boneco(h.from,bot(h.from),tam);fig.setAttribute('x',(-tam/2).toFixed(3));fig.setAttribute('y',(-tam*0.98).toFixed(3));p.wkFig.appendChild(fig);
   p.wkPapel=sv('g',null,p.wkFig);sv('rect',{x:0.34,y:-0.78,width:0.34,height:0.44,rx:0.03,fill:'#ffffff',stroke:'#94a3b8','stroke-width':0.025,transform:'rotate(12 0.5 -0.56)'},p.wkPapel);
-  [-0.68,-0.6,-0.52].forEach(function(ly){sv('line',{x1:0.42,y1:ly,x2:0.6,y2:ly+0.04,stroke:'#94a3b8','stroke-width':0.025},p.wkPapel);});}
+  [-0.68,-0.6,-0.52].forEach(function(ly){sv('line',{x1:0.42,y1:ly,x2:0.6,y2:ly+0.04,stroke:'#94a3b8','stroke-width':0.025},p.wkPapel);});
+  p.wkCafe=sv('g',null,p.wkFig);caneca(p.wkCafe,tam*0.4,-tam*0.16,tam*0.2,1);}
  var pp=P(x,y,z+bob);wk.setAttribute('transform','translate('+pp[0].toFixed(3)+' '+pp[1].toFixed(3)+')');wk.setAttribute('opacity',op.toFixed(2));
- p.wkSombra.setAttribute('cy',((z+bob)*UZ).toFixed(3));p.wkFig.setAttribute('transform','rotate('+tilt.toFixed(1)+' 0 0)');p.wkPapel.setAttribute('opacity',f.papel?'1':'0');
+ p.wkSombra.setAttribute('cy',((z+bob)*UZ).toFixed(3));p.wkFig.setAttribute('transform','rotate('+tilt.toFixed(1)+' 0 0)');p.wkPapel.setAttribute('opacity',f.papel?'1':'0');p.wkCafe.setAttribute('opacity',f.cafe?'1':'0');
  balaoPass(p,f.bal,op>0.3?[geo.ox+pp[0]*geo.k,geo.oy+(pp[1]-1.45)*geo.k]:null);}
 function balaoPass(p,txt,pos){var key=txt?txt.join('|'):'';
  if(!txt||!pos){if(p.bal&&p.bal.parentNode)p.bal.remove();p.bal=null;return;}
@@ -445,9 +502,10 @@ function balaoPass(p,txt,pos){var key=txt?txt.join('|'):'';
   var l1=trunc(txt[0],30),l2=trunc(txt[1],34),w=Math.round(Math.max(l1.length*6.4,l2.length*5.6)+40),hh=36,g2=sv('g',null,geo.top);p.bal=g2;
   sv('rect',{x:-w/2,y:-hh-8+2,width:w,height:hh,rx:12,fill:'#0f172a','fill-opacity':.14},g2);sv('rect',{x:-w/2,y:-hh-8,width:w,height:hh,rx:12,fill:'#111827'},g2);
   sv('polygon',{points:'-5,-8.5 5,-8.5 0,-3',fill:'#111827'},g2);
-  sv('rect',{x:-w/2+10,y:-hh-8+10,width:12,height:15,rx:2,fill:'#ffffff'},g2);[0,4,8].forEach(function(d){sv('line',{x1:-w/2+13,y1:-hh-8+14+d,x2:-w/2+19,y2:-hh-8+14+d,stroke:'#94a3b8','stroke-width':1.2},g2);});
+  if(p.h.cafe)caneca(g2,-w/2+16,-hh-8+26,11,0);
+  else{sv('rect',{x:-w/2+10,y:-hh-8+10,width:12,height:15,rx:2,fill:'#ffffff'},g2);[0,4,8].forEach(function(d){sv('line',{x1:-w/2+13,y1:-hh-8+14+d,x2:-w/2+19,y2:-hh-8+14+d,stroke:'#94a3b8','stroke-width':1.2},g2);});}
   var t1=sv('text',{x:-w/2+30,y:-hh-8+15,fill:'#f3f4f6'},g2);t1.textContent=l1;var t2=sv('text',{x:-w/2+30,y:-hh-8+28,fill:'#86efac',class:'l2'},g2);t2.textContent=l2;
-  var tt=sv('title',null,g2);tt.textContent=p.h.from+' → '+p.h.to+(p.h.task?' · '+p.h.task:'');}
+  var tt=sv('title',null,g2);tt.textContent=p.h.cafe?p.h.from+' · '+txt[1]:p.h.from+' → '+p.h.to+(p.h.task?' · '+p.h.task:'');}
  p.bal.setAttribute('transform','translate('+pos[0].toFixed(1)+' '+pos[1].toFixed(1)+')');}
 // movimento reduzido: sem caminhada, só uma seta tracejada piscando entre as mesas (ou até o elevador)
 function desenhaRM(p,a,b,t){var h=p.h,e=geo.elev,de=a?[a.x,a.y]:[e.x+0.4,e.y],ate=b?[b.x,b.y]:[e.x+0.4,e.y];
@@ -459,6 +517,8 @@ function desenhaRM(p,a,b,t){var h=p.h,e=geo.elev,de=a?[a.x,a.y]:[e.x+0.4,e.y],at
  var alvo=b||a,tp=P(alvo.x,alvo.y,2.2);balaoPass(p,[b?'Para '+h.to:'Levando para '+h.to,h.task||'Nova tarefa'],[geo.ox+tp[0]*geo.k,geo.oy+tp[1]*geo.k]);}
 function encerra(){var p=passAt;passAt=null;if(!p)return;
  if(p.wk&&p.wk.parentNode)p.wk.remove();if(p.seta&&p.seta.parentNode)p.seta.remove();if(p.bal&&p.bal.parentNode)p.bal.remove();
+ // café: fixa o novo lugar (sofá ou mesa) e redesenha; o boneco parado aparece no lugar novo
+ if(p.h.cafe){aplicaCafe(p.h);setTimeout(desenhar,0);return;}
  if(geo){var fb=geo.bgs[p.h.from],tb=geo.bgs[p.h.to];if(fb)fb.style.opacity='';if(tb)tb.classList.remove('recebe');}}
 // ---- painéis ----
 function card(id,titulo,extra){var c=el('section','card'+(fechados[id]?' fechado':''));var h=el('h3',null,titulo);
@@ -532,7 +592,7 @@ function desenhar(){
  var rc=card('rotinas','Rotinas',el('span','badge',rot.length));rot.slice(0,3).forEach(function(o){rc[1].appendChild(linha(o.bot,o.r.name,o.bot+' · '+o.r.schedule,el('span','hr',em(o.r.next_run))));});
  if(!rot.length)rc[1].appendChild(el('div','vazio','Nenhuma rotina informada.'));dir.appendChild(rc[0]);
 
- cena(andar.bots);}
+ atualizaCafe();cena(andar.bots);}
 // botão "Resolvido": 1º clique pede confirmação, 2º envia POST /api/resolve (cookie + mesma origem)
 function botaoResolver(nome){var bt=el('button','resolver','✓ Resolvido'),conf=false,tm=0;bt.type='button';bt.title='Marca que você já respondeu: o bot sai de "Esperando por mim" e fica descansando.';
  bt.addEventListener('click',function(ev){ev.stopPropagation();if(bt.disabled)return;
@@ -559,5 +619,5 @@ export function panelPage(nonce: string): string {
 <div id="topo"><div class="marca">Painel dos bots <span class="vivo" id="vivo"><i></i> carregando · </span><span id="hora"></span></div>
 <div class="contas" id="contas"></div><form method="post" action="/logout"><button type="submit" class="sair">Sair</button></form></div>
 <div id="esq"></div><div id="ativ"></div><div id="dir"></div>
-<script nonce="${nonce}">var floorOrder=${floorOrder.toString()};var frescor=${frescor.toString()};${CLIENT}</script></body></html>`;
+<script nonce="${nonce}">var floorOrder=${floorOrder.toString()};var frescor=${frescor.toString()};var sofaLugares=${sofaLugares.toString()};${CLIENT}</script></body></html>`;
 }
