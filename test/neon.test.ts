@@ -29,6 +29,24 @@ test("neon também no boneco que está andando", () => {
 });
 
 test("pulso é animação CSS, desligada por prefers-reduced-motion", () => {
-  assert.match(html, /\.neon-halo\{animation:neon /);
+  assert.match(html, /\.neon-pulso\{animation:neon /);
   assert.match(html, /@media \(prefers-reduced-motion:reduce\)\{\*,\*::before,\*::after\{animation:none!important/);
+});
+
+// Desempenho: nada com filtro (url(#neon), blur, drop-shadow) pode ser animado nem ficar dentro
+// de um grupo animado; senão o navegador refaz o filtro a cada quadro e a tela trava.
+test("neon leve: filtros ficam parados, só peças sem filtro pulsam", () => {
+  const css = html.slice(html.indexOf("<style"), html.indexOf("</style>"));
+  assert.doesNotMatch(css, /\.neon-halo\{[^}]*animation/, "halo filtrado não pode animar");
+  assert.doesNotMatch(css, /\.neon-chao\{[^}]*animation/, "anel filtrado não pode animar");
+  assert.doesNotMatch(css, /@keyframes neon-chao/);
+  assert.match(css, /\.balao\.neon \.borda\{[^}]*filter:drop-shadow/);
+  assert.doesNotMatch(css, /\.balao\.neon \.borda\{[^}]*animation/, "borda com drop-shadow não pode animar");
+  // halo fica fora do .respira (que anima transform sem parar)
+  assert.ok(html.includes("hv.insertBefore(neonHalo(null,"));
+  assert.ok(!html.includes("neonHalo(rs,"));
+  // peças que pulsam não carregam filtro
+  const pulsos = html.match(/sv\('(?:ellipse|rect)',\{[^}]*class:'neon-pulso'\}/g) ?? [];
+  assert.equal(pulsos.length, 2, "anel e rótulo têm uma peça pulsante cada");
+  for (const p of pulsos) assert.ok(!p.includes("filter"), "peça pulsante com filtro: " + p);
 });
