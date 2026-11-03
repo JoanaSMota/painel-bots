@@ -25,7 +25,8 @@ export type Msg =
   | { type: "looks"; bots: Record<string, { shape: string; color: string; accessory: string }> }
   | { type: "groups"; bots: Record<string, string>; floors?: string[] }
   | { type: "chat"; bots: Record<string, string> }
-  | { type: "usage"; total_used_pct: number; resets_at: string; bots: Record<string, number> };
+  | { type: "usage"; total_used_pct: number; resets_at: string; bots: Record<string, number> }
+  | { type: "handoff"; from: string; to: string; task: string; task_truncated: boolean };
 
 export class ValidationError extends Error {}
 
@@ -82,6 +83,17 @@ function botMap<T>(v: unknown, field: string, each: (val: unknown, f: string) =>
   return out;
 }
 
+/** Texto curto de uma linha: tira controles e corta em STEP_MAX caracteres (com "…"). */
+function shortText(v: unknown, field: string): { text: string; truncated: boolean } {
+  if (v === undefined) return { text: "", truncated: false };
+  if (typeof v !== "string") fail(`${field}: deve ser texto`);
+  let text = v.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
+  const chars = Array.from(text);
+  if (chars.length <= STEP_MAX) return { text, truncated: false };
+  text = chars.slice(0, STEP_MAX - 1).join("") + "…";
+  return { text, truncated: true };
+}
+
 export function parseMessage(raw: unknown): Msg {
   if (!isObj(raw)) fail("corpo deve ser um objeto JSON");
   const type = raw.type;
@@ -91,17 +103,7 @@ export function parseMessage(raw: unknown): Msg {
       const bot = botName(raw.bot, "bot");
       if (typeof raw.status !== "string" || !(STATUSES as readonly string[]).includes(raw.status))
         fail(`status: use um de ${STATUSES.join("|")}`);
-      let step = "";
-      let truncated = false;
-      if (raw.step !== undefined) {
-        if (typeof raw.step !== "string") fail("step: deve ser texto");
-        step = raw.step.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
-        const chars = Array.from(step);
-        if (chars.length > STEP_MAX) {
-          step = chars.slice(0, STEP_MAX - 1).join("") + "…";
-          truncated = true;
-        }
-      }
+      const { text: step, truncated } = shortText(raw.step, "step");
       return { type, bot, status: raw.status as Status, step, step_truncated: truncated };
     }
     case "routines": {
@@ -169,7 +171,15 @@ export function parseMessage(raw: unknown): Msg {
       const bots = raw.bots === undefined || (isObj(raw.bots) && Object.keys(raw.bots).length === 0) ? {} : botMap(raw.bots, "bots", (v, f) => pct(v, f));
       return { type, total_used_pct: total, resets_at, bots };
     }
+    case "handoff": {
+      onlyKeys(raw, ["type", "from", "to", "task"], "handoff");
+      const from = botName(raw.from, "from");
+      const to = botName(raw.to, "to");
+      if (from === to) fail("to: deve ser outro bot (from e to iguais)");
+      const { text: task, truncated } = shortText(raw.task, "task");
+      return { type, from, to, task, task_truncated: truncated };
+    }
     default:
-      fail("type: use status|routines|roster|looks|groups|chat|usage");
+      fail("type: use status|routines|roster|looks|groups|chat|usage|handoff");
   }
 }

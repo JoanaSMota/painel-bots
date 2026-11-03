@@ -1,7 +1,7 @@
 // Estado do painel: arquivo JSON em DATA_DIR (volume do Railway) com escrita atômica,
 // ou só memória quando DATA_DIR não está definido/gravável.
 import { promises as fs } from "node:fs";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import type { Msg, Status } from "./validate.js";
 
@@ -27,6 +27,18 @@ export interface StepEntry {
 export const RECENT_MAX = 10;
 export const RESOLVED_STEP = "Resolvido pelo Lucas no painel";
 export const FEED_MAX = 50;
+/** Passagens de tarefa guardadas (as mais novas) e por quanto tempo. */
+export const HANDOFF_MAX = 20;
+export const HANDOFF_TTL_MS = 10 * 60 * 1000;
+
+/** Um bot passou uma tarefa a outro (o painel anima o boneco indo até a mesa). */
+export interface Handoff {
+  id: string;
+  at: string;
+  from: string;
+  to: string;
+  task: string;
+}
 
 export interface State {
   version: 1;
@@ -40,6 +52,11 @@ export interface State {
   feed: (StepEntry & { bot: string })[];
   /** Bots com foto enviada: nome → data do envio. */
   avatars: Record<string, string>;
+  /**
+   * Passagens de tarefa recentes (mais nova primeiro), no máximo HANDOFF_MAX,
+   * cada uma vale HANDOFF_TTL_MS. Só em memória: não vai para o arquivo.
+   */
+  handoffs: Handoff[];
 }
 
 export function emptyState(): State {
@@ -52,6 +69,7 @@ export function emptyState(): State {
     floors: null,
     feed: [],
     avatars: Object.create(null),
+    handoffs: [],
   };
 }
 
@@ -95,6 +113,7 @@ export class Store {
             feed: Array.isArray(parsed.feed) ? parsed.feed : [],
             floors: Array.isArray(parsed.floors) ? parsed.floors : null,
             avatars: Object.assign(Object.create(null), parsed.avatars ?? {}),
+            handoffs: [],
           };
         } else throw new Error("formato");
       } catch (e: unknown) {
@@ -161,8 +180,20 @@ export class Store {
       case "usage":
         this.state.usage = { total_used_pct: m.total_used_pct, resets_at: m.resets_at, bots: m.bots, at };
         break;
+      case "handoff": {
+        const h: Handoff = { id: randomUUID(), at, from: m.from, to: m.to, task: m.task };
+        this.state.handoffs = [h, ...this.state.handoffs].slice(0, HANDOFF_MAX);
+        this.pruneHandoffs(now);
+        break;
+      }
     }
     this.state.updated_at = at;
+  }
+
+  /** Tira as passagens com mais de HANDOFF_TTL_MS. */
+  pruneHandoffs(now = new Date()): void {
+    const min = now.getTime() - HANDOFF_TTL_MS;
+    this.state.handoffs = this.state.handoffs.filter((h) => Date.parse(h.at) >= min);
   }
 
   /**
@@ -205,7 +236,8 @@ export class Store {
   persist(): Promise<void> {
     const file = this.file;
     if (!file) return Promise.resolve();
-    const data = JSON.stringify(this.state);
+    // Passagens de tarefa são efêmeras (expiram em minutos): não vão para o arquivo.
+    const data = JSON.stringify({ ...this.state, handoffs: [] });
     const next = this.chain.then(async () => {
       const tmp = `${file}.tmp-${process.pid}`;
       const fh = await fs.open(tmp, "w", 0o600);

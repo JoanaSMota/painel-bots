@@ -67,6 +67,11 @@ curl -sS "${H[@]}" -X POST "$URL/ingest" -d '{"type":"chat","bots":{"Donna":"gro
 
 # usage: percentuais de 0 a 100, resets_at em ISO 8601
 curl -sS "${H[@]}" -X POST "$URL/ingest" -d '{"type":"usage","total_used_pct":42.5,"resets_at":"2026-11-09T00:00:00-03:00","bots":{"Donna":10,"Grok Bot":30}}'
+
+# handoff: um bot passa uma tarefa para outro. No painel, quem passa levanta, leva o papel até a mesa
+# do outro e volta (se o outro estiver em outro andar, sai/entra pelo elevador). from ≠ to; task até 80
+# caracteres (é cortada com …). Fica só em memória: últimas 20, por 10 min, em /api/state → handoffs.
+curl -sS "${H[@]}" -X POST "$URL/ingest" -d '{"type":"handoff","from":"CEO ANA","to":"COO ANA","task":"Revisar a proposta"}'
 ```
 
 ## Desenvolvimento
