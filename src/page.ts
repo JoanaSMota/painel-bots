@@ -4,6 +4,7 @@
 import { floorOrder } from "./floors.js";
 import { frescor } from "./frescor.js";
 import { sofaLugares } from "./cafe.js";
+import { elevSeta } from "./elevador.js";
 
 const STYLE = String.raw`
 :root{--bg:#e9ecf1;--card:#16181d;--card2:#1f2229;--line:#2b2f38;--txt:#f3f4f6;--mut:#9aa1ad;
@@ -319,13 +320,26 @@ function cena(lista){
   for(var bi=0;bi<6;bi++){var hh=0.15+0.45*((bi*37)%7)/7;quad(g,[[0,ty0+1.4+bi*0.17,1.5],[0,ty0+1.52+bi*0.17,1.5],[0,ty0+1.52+bi*0.17,1.5+hh],[0,ty0+1.4+bi*0.17,1.5+hh]],'#a78bfa');}}
  planta(g,0.9,0.9);planta(g,RW-0.9,0.9);
  // elevador na parede da esquerda, entre o quadro e a TV (por onde entra/sai quem vem de outro andar)
- var ey0=qy+3.28,ey1=qy+4.02,eg=sv('g',{class:'elevador'},g);
+ // portas de correr (duas folhas recortadas no vão) e painel de andar com seta acima da porta.
+ // Desempenho: nada aqui tem filtro; a animação só muda transform (portas) e opacity/display (painel), quadro a quadro em quadroJa.
+ var ey0=qy+3.28,ey1=qy+4.02,em=(ey0+ey1)/2,EZ=2.1,eg=sv('g',{class:'elevador'},g);
  quad(eg,[[0,ey0,0],[0.75,ey0,0],[0.75,ey1,0],[0,ey1,0]],'#dfe3e9');
  quad(eg,[[0,ey0-0.06,0],[0,ey1+0.06,0],[0,ey1+0.06,2.3],[0,ey0-0.06,2.3]],'#6b7686');
- quad(eg,[[0,ey0,0],[0,(ey0+ey1)/2,0],[0,(ey0+ey1)/2,2.1],[0,ey0,2.1]],'#c9d0da');
- quad(eg,[[0,(ey0+ey1)/2,0],[0,ey1,0],[0,ey1,2.1],[0,(ey0+ey1)/2,2.1]],'#bcc4cf');
- sv('polyline',{points:pts([[0,(ey0+ey1)/2,0],[0,(ey0+ey1)/2,2.1]]),stroke:'#8b95a5','stroke-width':0.03,fill:'none'},eg);
- var el1=P(0,(ey0+ey1)/2,2.2);sv('circle',{cx:el1[0],cy:el1[1],r:0.07,fill:passAt&&(passAt.modo==='sai'||passAt.modo==='entra')?'#22c55e':'#cbd5e1'},eg);
+ // cabine (aparece quando as portas abrem): fundo escuro, piso e luz no teto
+ quad(eg,[[0,ey0,0],[0,ey1,0],[0,ey1,EZ],[0,ey0,EZ]],'#334155');
+ quad(eg,[[0,ey0,0],[0,ey1,0],[0,ey1,0.14],[0,ey0,0.14]],'#475569');
+ quad(eg,[[0,ey0+0.06,EZ-0.17],[0,ey1-0.06,EZ-0.17],[0,ey1-0.06,EZ-0.08],[0,ey0+0.06,EZ-0.08]],'#fef9c3');
+ var vc=sv('clipPath',{id:'vaoElev'},defs);quad(vc,[[0,ey0,0],[0,ey1,0],[0,ey1,EZ],[0,ey0,EZ]],'#000');
+ var vg=sv('g',{'clip-path':'url(#vaoElev)'},eg),pE=sv('g',{class:'porta-elev'},vg),pD=sv('g',{class:'porta-elev'},vg);
+ quad(pE,[[0,ey0,0],[0,em,0],[0,em,EZ],[0,ey0,EZ]],'#c9d0da');quad(pD,[[0,em,0],[0,ey1,0],[0,ey1,EZ],[0,em,EZ]],'#bcc4cf');
+ sv('polyline',{points:pts([[0,em,0],[0,em,EZ]]),stroke:'#8b95a5','stroke-width':0.03,fill:'none'},pE);
+ // painel de andar: seta (▲ sobe / ▼ desce) e o número do andar para onde o elevador vai
+ var pz=2.36,pn=sv('g',{class:'painel-elev'},eg);quad(pn,[[0,em-0.31,pz],[0,em+0.31,pz],[0,em+0.31,pz+0.42],[0,em-0.31,pz+0.42]],'#0f172a',{stroke:'#475569','stroke-width':0.025});
+ var luz=sv('g',{class:'luz-elev'},pn);
+ var sCima=quad(luz,[[0,em+0.26,pz+0.1],[0,em+0.08,pz+0.1],[0,em+0.17,pz+0.32]],'#4ade80',{class:'seta-sobe',display:'none'});
+ var sBaixo=quad(luz,[[0,em+0.26,pz+0.32],[0,em+0.08,pz+0.32],[0,em+0.17,pz+0.1]],'#4ade80',{class:'seta-desce',display:'none'});
+ var tp0=P(0,em-0.12,pz+0.1),nEl=sv('text',{transform:'matrix('+CX+' '+(-SY)+' 0 '+UZ+' '+tp0[0].toFixed(3)+' '+tp0[1].toFixed(3)+')',fill:'#4ade80','font-size':0.3,'font-weight':800,'text-anchor':'middle','font-family':'Inter,system-ui,sans-serif'},luz);
+ var elevEls={pE:pE,pD:pD,cima:sCima,baixo:sBaixo,num:nEl,luz:luz,w:(em-ey0)*0.96};
  // café: sofá e poltrona; xr = corredor entre as mesas e o sofá, yf = faixa da frente
  var sx=RW-1.5,sy=RD-3.0,px=MX+L*0.55,py=RD-1.25,xr=RW-1.85,yf=RD-0.2;
  // 3 lugares por andar (ASSENTOS): ponta de trás do sofá, poltrona, ponta da frente (o meio do sofá ficaria espremido)
@@ -420,7 +434,7 @@ function cena(lista){
  transAndar=0;
  // geometria para a animação de passagem de tarefa (sobrevive ao redesenho: o quadro recria o boneco aqui)
  var corr=[MX-1.2];if(cols>1)corr.push(MX-0.6+L+CG/2);
- geo={andar:andarSel,g:g,top:sv('g',{class:'passante'},mov),ox:ox,oy:oy,k:k,lug:lug,bgs:bgs,corr:corr,elev:{x:0.4,y:(ey0+ey1)/2},sofa:assentos,xr:xr,yf:yf};
+ geo={andar:andarSel,g:g,top:sv('g',{class:'passante'},mov),ox:ox,oy:oy,k:k,lug:lug,bgs:bgs,corr:corr,elev:{x:0.4,y:(ey0+ey1)/2},sofa:assentos,xr:xr,yf:yf,elevEls:elevEls,elevSt:''};
  if(passAt)quadroJa();}
 // ---- passagem de tarefa: o boneco levanta, anda até a mesa do outro, entrega e volta ----
 var filaPass=[],passAt=null,vistos=null,raf=0,VEL=0.0034,AY=-0.55;
@@ -471,20 +485,28 @@ function rotaMesas(a,b){var lado=a.x>b.x?1:-1,fim=[b.x+lado*1.1,b.y-0.1],ya=a.y+
 function rotaElev(a){var c=geo.corr[0],e=geo.elev,ya=a.y+AY;return [[a.x,a.y],[a.x,ya],[c,ya],[c,e.y],[e.x+0.5,e.y]];}
 function planejar(h){if(h.cafe)return planejaCafe(h);var a=geo.lug[h.from],b=geo.lug[h.to];if(!a&&!b)return null;
  var p={h:h,andar:geo.andar,t0:performance.now(),fases:[]};
- if(RM.matches){p.modo='rm';p.fases.push({d:4500});return p;}
+ if(RM.matches){p.modo='rm';p.fases.push({d:4500});if(!(a&&b)){var ord=times().map(function(t){return t.nome;}),ot=bot(a?h.to:h.from).team||SEM;p.vai=elevSeta(geo.andar,ot,ord);p.vem=elevSeta(ot,geo.andar,ord);}return p;}
  function anda(r,sobe,desce,extra){var o={d:Math.min(7000,Math.max(900,r.len/VEL)),r:r,sobe:sobe,desce:desce};for(var k in extra)o[k]=extra[k];p.fases.push(o);}
  var paraTxt='Para '+h.to,tk=h.task||'Nova tarefa';
  if(a&&b){p.modo='mesmo';var ida=linhaRota(rotaMesas(a,b)),volta=linhaRota(ida.pts.slice().reverse());
   anda(ida,1,0,{papel:1});p.fases.push({d:3200,fixo:ida.pts[ida.pts.length-1],bal:[paraTxt,tk],recebe:1,papel:1});anda(volta,0,1,{});}
- else if(a){p.modo='sai';var ida2=linhaRota(rotaElev(a)),e=geo.elev,porta=[e.x,e.y],fora=[e.x+0.5,e.y];
-  var tm=bot(h.to).team;anda(ida2,1,0,{papel:1,bal:['Levando para '+h.to,tm?'andar '+tm:tk]});
-  p.fases.push({d:700,de:fora,ate:porta,op0:1,op1:0,papel:1},{d:1500,fixo:porta,op0:0,op1:0},{d:700,de:porta,ate:fora,op0:0,op1:1});
-  anda(linhaRota(ida2.pts.slice().reverse()),0,1,{});}
- else{p.modo='entra';var e2=geo.elev,porta2=[e2.x,e2.y],fora2=[e2.x+0.5,e2.y],c2=geo.corr[0];
-  var r1=[fora2,[c2,e2.y],[c2,b.y+AY],[b.x-1.1,b.y+AY],[b.x-1.1,b.y-0.1]];
-  var ida3=linhaRota(r1);p.fases.push({d:700,de:porta2,ate:fora2,op0:0,op1:1,papel:1});anda(ida3,0,0,{papel:1});
-  p.fases.push({d:3200,fixo:r1[r1.length-1],bal:[paraTxt,tk],recebe:1,papel:1});anda(linhaRota(r1.slice().reverse()),0,0,{});
-  p.fases.push({d:700,de:fora2,ate:porta2,op0:1,op1:0});}
+ else{var aqui=geo.andar,outro=bot(a?h.to:h.from).team||SEM,ordem=times().map(function(t){return t.nome;});
+  // vai = elevador saindo deste andar para o outro; vem = chegando do outro andar neste
+  p.vai=elevSeta(aqui,outro,ordem);p.vem=elevSeta(outro,aqui,ordem);
+  var e=geo.elev,dentro=[e.x-0.35,e.y],fora=[e.x+0.5,e.y],PA=550;
+  // chama (painel acende a seta), portas abrem, entra (some na cabine), portas fecham, painel pisca durante a viagem
+  var embarca=function(o){p.fases.push({d:500,fixo:fora,ind:'vai',bal:o.bal,papel:o.papel},{d:PA,fixo:fora,porta0:0,porta1:1,ind:'vai',bal:o.bal,papel:o.papel},
+    {d:800,de:fora,ate:dentro,op0:1,op1:0,porta:1,ind:'vai',papel:o.papel},{d:PA,fixo:dentro,op0:0,op1:0,porta0:1,porta1:0,ind:'vai'},{d:o.viagem,fixo:dentro,op0:0,op1:0,ind:'vai',pisca:1});};
+  // painel acende a seta de chegada (piscando), portas abrem, sai da cabine, portas fecham
+  var desembarca=function(o){p.fases.push({d:o.espera,fixo:dentro,op0:0,op1:0,ind:'vem',pisca:1},{d:PA,fixo:dentro,op0:0,op1:0,porta0:0,porta1:1,ind:'vem'},
+    {d:800,de:dentro,ate:fora,op0:0,op1:1,porta:1,ind:'vem',papel:o.papel},{d:PA,fixo:fora,porta0:1,porta1:0,papel:o.papel});};
+  if(a){p.modo='sai';var ida2=linhaRota(rotaElev(a)),tm=bot(h.to).team,bl=['Levando para '+h.to,tm?'andar '+tm:tk];
+   anda(ida2,1,0,{papel:1,bal:bl});embarca({bal:bl,papel:1,viagem:1800});desembarca({espera:900});
+   anda(linhaRota(ida2.pts.slice().reverse()),0,1,{});}
+  else{p.modo='entra';var c2=geo.corr[0],r1=[fora,[c2,e.y],[c2,b.y+AY],[b.x-1.1,b.y+AY],[b.x-1.1,b.y-0.1]],ida3=linhaRota(r1);
+   desembarca({espera:1300,papel:1});anda(ida3,0,0,{papel:1});
+   p.fases.push({d:3200,fixo:r1[r1.length-1],bal:[paraTxt,tk],recebe:1,papel:1});anda(linhaRota(r1.slice().reverse()),0,0,{});
+   embarca({viagem:1400});}}
  return p;}
 function planejaCafe(h){var a=geo.lug[h.from],si=h.cafe==='vai'?h.seat:noSofa[h.from],s=si!=null?geo.sofa[si]:null;
  if(geo.andar!==h.andar||!a||!s||RM.matches){aplicaCafe(h);setTimeout(desenhar,0);return null;}
@@ -515,10 +537,16 @@ function quadroJa(){
   p.wkPapel=sv('g',null,p.wkFig);sv('rect',{x:0.34,y:-0.78,width:0.34,height:0.44,rx:0.03,fill:'#ffffff',stroke:'#94a3b8','stroke-width':0.025,transform:'rotate(12 0.5 -0.56)'},p.wkPapel);
   [-0.68,-0.6,-0.52].forEach(function(ly){sv('line',{x1:0.42,y1:ly,x2:0.6,y2:ly+0.04,stroke:'#94a3b8','stroke-width':0.025},p.wkPapel);});
   p.wkCafe=sv('g',null,p.wkFig);caneca(p.wkCafe,tam*0.4,-tam*0.16,tam*0.2,1);}
- var pp=P(x,y,z+bob);wk.setAttribute('transform','translate('+pp[0].toFixed(3)+' '+pp[1].toFixed(3)+')');wk.setAttribute('opacity',op.toFixed(2));
+ var pp=P(x,y,z+bob);wk.setAttribute('transform','translate('+pp[0].toFixed(3)+' '+pp[1].toFixed(3)+')');wk.setAttribute('opacity',op.toFixed(2));wk.setAttribute('display',op<0.02?'none':'inline');
+ if(p.vai){var po=f.porta0!=null?f.porta0+(f.porta1-f.porta0)*suave(u):(f.porta||0),ix=f.ind?p[f.ind]:null;elevPoe(po,ix&&ix.dir,ix?ix.andar:0,!f.pisca||Math.floor(performance.now()/380)%2===0);}
  p.wkSombra.setAttribute('cy',((z+bob)*UZ).toFixed(3));p.wkFig.setAttribute('transform','rotate('+tilt.toFixed(1)+' 0 0)');p.wkPapel.setAttribute('opacity',f.papel?'1':'0');p.wkCafe.setAttribute('opacity',f.cafe?'1':'0');
  var nn=neon===h.from?'inline':'none';p.wkNeon.setAttribute('display',nn);p.wkNeonChao.setAttribute('display',nn);p.wkNeonChao.setAttribute('transform','translate(0 '+((z+bob)*UZ).toFixed(3)+')');
  balaoPass(p,f.bal,op>0.3?[geo.ox+pp[0]*geo.k,geo.oy+(pp[1]-1.45)*geo.k]:null);}
+function suave(u){return u*u*(3-2*u);}
+// estado do elevador: o = quanto as portas estão abertas (0 a 1); dir = 'sobe'/'desce'/null; aceso = seta acesa (pisca alternando)
+function elevPoe(o,dir,andar,aceso){var E=geo&&geo.elevEls;if(!E)return;var ch=o.toFixed(3)+'|'+dir+'|'+andar+'|'+aceso;if(geo.elevSt===ch)return;geo.elevSt=ch;
+ var dy=o*E.w;E.pE.setAttribute('transform','translate('+(dy*CX).toFixed(3)+' '+(-dy*SY).toFixed(3)+')');E.pD.setAttribute('transform','translate('+(-dy*CX).toFixed(3)+' '+(dy*SY).toFixed(3)+')');
+ E.cima.setAttribute('display',dir==='sobe'?'inline':'none');E.baixo.setAttribute('display',dir==='desce'?'inline':'none');E.num.textContent=dir&&andar?String(andar):'';E.luz.setAttribute('opacity',aceso?'1':'0.3');}
 function balaoPass(p,txt,pos){var key=txt?txt.join('|'):'';
  if(!txt||!pos){if(p.bal&&p.bal.parentNode)p.bal.remove();p.bal=null;return;}
  if(!p.bal||p.balKey!==key||p.bal.parentNode!==geo.top){if(p.bal&&p.bal.parentNode)p.bal.remove();p.balKey=key;
@@ -536,10 +564,10 @@ function desenhaRM(p,a,b,t){var h=p.h,e=geo.elev,de=a?[a.x,a.y]:[e.x+0.4,e.y],at
   sv('line',{x1:A[0],y1:A[1],x2:B[0],y2:B[1],stroke:'#111827','stroke-width':0.09,'stroke-dasharray':'0.3 0.18','stroke-linecap':'round'},p.seta);
   var an=Math.atan2(B[1]-A[1],B[0]-A[0]),s1=0.38;sv('polygon',{points:[B[0],B[1],B[0]-s1*Math.cos(an-0.5),B[1]-s1*Math.sin(an-0.5),B[0]-s1*Math.cos(an+0.5),B[1]-s1*Math.sin(an+0.5)].map(function(v){return v.toFixed(3);}).join(' '),fill:'#111827'},p.seta);
   [A,B].forEach(function(c){sv('circle',{cx:c[0],cy:c[1],r:0.32,fill:'none',stroke:'#22c55e','stroke-width':0.07},p.seta);});}
- p.seta.setAttribute('opacity',Math.floor(t/600)%2?'0.35':'1');
+ p.seta.setAttribute('opacity',Math.floor(t/600)%2?'0.35':'1');var ix=a?p.vai:p.vem;if(ix)elevPoe(0,ix.dir,ix.andar,true);
  var alvo=b||a,tp=P(alvo.x,alvo.y,2.2);balaoPass(p,[b?'Para '+h.to:'Levando para '+h.to,h.task||'Nova tarefa'],[geo.ox+tp[0]*geo.k,geo.oy+tp[1]*geo.k]);}
 function encerra(){var p=passAt;passAt=null;if(!p)return;
- if(p.wk&&p.wk.parentNode)p.wk.remove();if(p.seta&&p.seta.parentNode)p.seta.remove();if(p.bal&&p.bal.parentNode)p.bal.remove();
+ if(p.vai)elevPoe(0,null,0,true);if(p.wk&&p.wk.parentNode)p.wk.remove();if(p.seta&&p.seta.parentNode)p.seta.remove();if(p.bal&&p.bal.parentNode)p.bal.remove();
  // café: fixa o novo lugar (sofá ou mesa) e redesenha; o boneco parado aparece no lugar novo
  if(p.h.cafe){aplicaCafe(p.h);setTimeout(desenhar,0);return;}
  if(geo){var fb=geo.bgs[p.h.from],tb=geo.bgs[p.h.to];if(fb)fb.style.opacity='';if(tb)tb.classList.remove('recebe');}}
@@ -642,5 +670,5 @@ export function panelPage(nonce: string): string {
 <div id="topo"><div class="marca">Painel dos bots <span class="vivo" id="vivo"><i></i> carregando · </span><span id="hora"></span></div>
 <div class="contas" id="contas"></div><form method="post" action="/logout"><button type="submit" class="sair">Sair</button></form></div>
 <div id="esq"></div><div id="ativ"></div><div id="dir"></div>
-<script nonce="${nonce}">var floorOrder=${floorOrder.toString()};var frescor=${frescor.toString()};var sofaLugares=${sofaLugares.toString()};${CLIENT}</script></body></html>`;
+<script nonce="${nonce}">var floorOrder=${floorOrder.toString()};var frescor=${frescor.toString()};var sofaLugares=${sofaLugares.toString()};var elevSeta=${elevSeta.toString()};${CLIENT}</script></body></html>`;
 }
