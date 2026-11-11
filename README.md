@@ -15,10 +15,13 @@ pronto para o Railway. Recebe atualizações em `POST /ingest` e mostra o painel
 
 - `POST /ingest`: só `Authorization: Bearer <PAINEL_TOKEN>` (cookie não vale), `Content-Type: application/json`, corpo até 64 KB. Retorna 401 sem chave, 400 com o erro do campo, 413 se for grande demais.
 - `GET /`: tela de login (nenhum dado) ou o painel. O login grava um cookie `HttpOnly; Secure; SameSite=Strict` com um HMAC da chave, nunca a chave. Também aceita Bearer.
-- `GET /api/state`: estado em JSON, protegido. O painel atualiza a cada 30 s.
+- `GET /api/state`: estado em JSON, protegido. O painel atualiza a cada 10 s e só redesenha quando algo mudou.
 - `POST /avatar?bot=<nome>` (ou header `X-Bot: <nome em encodeURIComponent>`): foto do boneco. Só Bearer, `Content-Type: image/png`, até 512 KB (reduza para ~256 px antes). 401/415/400/413 nos erros. Gravada em `DATA_DIR/avatars/<sha256 do nome>.png`.
 - `GET /avatar/<nome>`: a foto, protegida por cookie ou Bearer (sem login → 401). Nada é público.
+- `GET /fonts/<orbitron|inter|jetbrains-mono>.woff2`: fontes do visual ANA servidas pelo próprio serviço (a CSP continua sem origem externa: só `font-src 'self'`). Público, sem dado nenhum; qualquer outro nome → 404. Arquivos em `assets/fonts/` (licença OFL).
 - `GET /health`: público, retorna só `{"ok":true}`.
+
+O painel (visual ANA, tema escuro) tem as abas MAPA (escritório isométrico: quem trabalha, espera ou está com erro senta numa mesa; quem descansa fica na copa), LISTA (todos os bots) e ORGANOGRAMA (por enquanto só um aviso "em breve"), a faixa vermelha de erro, "Precisa de você" e "Parado há +12h". Uma passagem de bastão (`handoff`) vira uma linha animada por ~8 s (via elevador quando muda de andar).
 
 O painel separa os bots por time ("andares"). Quem não tem time fica em "Sem time". Sem `floors`, os andares vão em ordem alfabética; com `floors`, seguem a lista, os times fora dela vêm depois e "Sem time" fica por último.
 Cada bot guarda os últimos 10 passos (`recent`) e o estado guarda um feed global dos últimos 50 (`feed`), mostrados em "Passos recentes" e "Atividade". Um status igual ao anterior só atualiza o horário. Horários aparecem em America/Recife.

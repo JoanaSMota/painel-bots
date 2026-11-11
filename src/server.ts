@@ -1,4 +1,5 @@
 import http from "node:http";
+import { readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { COOKIE_NAME, LoginLimiter, bearer, readCookie, safeEqual, sessionValue } from "./auth.js";
 import { loginPage, panelPage } from "./page.js";
@@ -8,6 +9,18 @@ import { ValidationError, botName, parseMessage } from "./validate.js";
 const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 export const BODY_LIMIT = 64 * 1024;
+
+// Fontes do visual ANA (Orbitron, Inter, JetBrains Mono; licença OFL, subconjunto latino). Servidas pelo próprio
+// serviço (a CSP não aceita CDN), lidas uma vez ao subir. Não carregam dado nenhum, por isso não exigem login.
+const FONT_FILES = ["orbitron", "inter", "jetbrains-mono"] as const;
+const FONTS = new Map<string, Buffer>();
+for (const f of FONT_FILES) {
+  try {
+    FONTS.set(`/fonts/${f}.woff2`, readFileSync(new URL(`../../assets/fonts/${f}.woff2`, import.meta.url)));
+  } catch {
+    // sem a fonte, o painel cai nas fontes do sistema
+  }
+}
 
 export interface AppOptions {
   token: string;
@@ -115,7 +128,7 @@ export function createApp(opts: AppOptions): http.Server {
     res.setHeader("Strict-Transport-Security", "max-age=31536000");
     res.setHeader(
       "Content-Security-Policy",
-      `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; img-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
+      `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
     );
     // Log mínimo: método, rota (sem query), status. Nunca corpo, step ou token.
     // Em /avatar/<bot> loga só o padrão da rota, não o nome do bot.
@@ -133,6 +146,16 @@ export function createApp(opts: AppOptions): http.Server {
 
     try {
       if (route === "/health" && (method === "GET" || method === "HEAD")) return json(200, { ok: true });
+
+      const fonte = FONTS.get(route);
+      if (fonte && (method === "GET" || method === "HEAD")) {
+        res.writeHead(200, {
+          "Content-Type": "font/woff2",
+          "Content-Length": String(fonte.length),
+          "Cache-Control": "public, max-age=604800, immutable",
+        });
+        return res.end(method === "HEAD" ? undefined : fonte);
+      }
 
       if (route === "/robots.txt" && method === "GET") {
         res.writeHead(200, { "Content-Type": "text/plain" });

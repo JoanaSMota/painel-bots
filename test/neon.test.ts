@@ -23,9 +23,9 @@ test("bot em foco ganha classe neon no corpo e no rótulo; os outros esmaecem", 
     assert.ok(html.includes(s), "faltou " + s);
 });
 
-test("neon também no boneco que está andando", () => {
-  assert.ok(html.includes("p.wkNeon=neonHalo("));
-  assert.ok(html.includes("neon===h.from?'inline':'none'"));
+test("a camada da passagem (linha/dica) não captura o mouse, então o clique no bot continua ligando o neon", () => {
+  assert.match(html, /\.passante\{pointer-events:none\}/);
+  assert.ok(html.includes("hl=sv('g',{class:'passante'},mov),tl=sv('g',{class:'passante'},mov)"));
 });
 
 test("pulso é animação CSS, desligada por prefers-reduced-motion", () => {

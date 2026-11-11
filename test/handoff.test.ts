@@ -147,7 +147,13 @@ test("status continua igual (step cortado em 80 com …)", () => {
   assert.deepEqual(m2, { type: "status", bot: "Donna", status: "idle", step: "", step_truncated: false });
 });
 
-test("painel tem a animação de passagem (fila, elevador, movimento reduzido) e não anima as antigas", () => {
+test("painel desenha a passagem como linha ciano→roxo com seta por ~8 s, sem animar as que já estavam na página", () => {
   const html = panelPage("n");
-  for (const s of ["handoffs", "filaPass", "elevador", "vistos", "RM.matches"]) assert.ok(html.includes(s), "faltou " + s);
+  for (const s of ["handoffs", "vistos", "HANDOFF_MS=8000", "function linhaHo(", "function novasPassagens(", "lin(defs,'ho','#00F0FF','#6366F1',1,0)", "class:'fluxo'", "RM.matches"])
+    assert.ok(html.includes(s), "faltou " + s);
+  // 1ª carga: só registra os ids (não anima as antigas); depois só as novas entram
+  assert.match(html, /if\(vistos===null\)\{vistos=ids;return;\}/);
+  assert.ok(html.includes("ate:Date.now()+HANDOFF_MS"));
+  // a camada da linha não bloqueia o clique nos bots
+  assert.ok(html.includes("hl=sv('g',{class:'passante'},mov)"));
 });
