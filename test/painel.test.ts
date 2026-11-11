@@ -136,3 +136,29 @@ test("fontes: servidas pelo próprio serviço (woff2, só as 3 da lista) e a CSP
   // as fontes não abrem nenhum dado: /api/state continua protegido
   assert.equal((await fetch(`${base}/api/state`)).status, 401);
 });
+
+test("rótulos do mapa desviam do letreiro COPA e dos textos do piso (colisão contra texto, não só contra bots)", () => {
+  assert.ok(html.includes("function obstTexto("));
+  assert.ok(html.includes("obstTexto(sv('text',{transform:tm,"), "letreiro COPA vira obstáculo");
+  assert.ok(html.includes("obstTexto(t,m,sz);return t;}"), "textos do piso (ÁREA DE TRABALHO / COPA · DESCANSO) viram obstáculo");
+  // os balões consideram esses retângulos (rects) além dos outros bots; rects nasce antes do primeiro texto
+  assert.ok(html.indexOf(" var rects=[];") > 0 && html.indexOf(" var rects=[];") < html.indexOf("function obstTexto("));
+  assert.ok(html.includes("obst=rects.filter(function(r){return r.nome!==b.nome;})"));
+});
+
+test("LISTA: avatar de cada linha usa o mesmo boneco do mapa (look + foto) e ids de gradiente nunca repetem", () => {
+  assert.ok(html.includes("function mini(nome,px){var s=boneco(nome,bot(nome),px||26);"));
+  assert.ok(html.includes("nd.appendChild(mini(n,28))"));
+  // o contador de ids não volta a zero: um svg antigo (mapa escondido) não rouba o gradiente do boneco da lista
+  assert.doesNotMatch(html, /uid=0[;,]?[^,]*desenhar|if\(!transAndar\)uid=0/);
+  assert.equal((html.match(/uid=0/g) ?? []).length, 1, "uid só é inicializado na declaração");
+});
+
+test("LISTA: rola dentro do painel central, cabeçalho fixo e a rolagem sobrevive ao redesenho", () => {
+  const css = html.slice(html.indexOf("<style"), html.indexOf("</style>"));
+  assert.match(css, /\.rol\{overflow:auto/);
+  assert.match(css, /\.lista-wrap \.rol\{flex:1 1 0;min-height:0\}/);
+  assert.match(css, /\.tabela th\{[^}]*position:sticky;top:0/);
+  assert.match(css, /#C\{[^}]*overflow:hidden/);
+  assert.ok(html.includes("topo=ro?ro.scrollTop:0") && html.includes("rol.scrollTop=topo;"));
+});
