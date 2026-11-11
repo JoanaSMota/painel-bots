@@ -152,7 +152,8 @@ test("CSP libera só imagens do próprio site; logs não levam nome do bot", asy
   assert.match(csp, /default-src 'none'/);
   const html = await r.text();
   assert.match(html, /floorOrder/);
-  assert.ok(!html.includes("Saúde Lucas"), "HTML não embute dado de bot");
+  // a estrutura fixa do organograma cita nomes de bots; o que não pode estar na página é o dado vivo do estado
+  assert.ok(!html.includes("passo 11") && !html.includes("Cinza") && !html.includes(PNG.toString("base64")), "HTML não embute dado de bot");
   const all = logs.join("\n");
   assert.ok(!all.includes("Sa%C3%BAde") && !all.includes("Saúde"), "log com nome do bot");
   assert.ok(all.includes("GET /avatar/:bot 200"));

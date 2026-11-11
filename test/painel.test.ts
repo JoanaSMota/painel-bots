@@ -57,13 +57,6 @@ test("topbar: logo, título, Ao vivo, pílulas, abas MAPA | LISTA | ORGANOGRAMA 
     assert.ok(html.includes(s), "faltou " + s);
 });
 
-test("aba ORGANOGRAMA é só placeholder 'em breve' (nada de Notion nem dado externo)", () => {
-  const breve = html.slice(html.indexOf('id="breve"'), html.indexOf("</section>", html.indexOf('id="breve"')));
-  assert.ok(breve.includes("EM BREVE"));
-  assert.ok(!/notion/i.test(html), "o painel não liga ao Notion");
-  assert.ok(html.includes("mostra('breve',aba==='org')"));
-});
-
 test("faixa de erro: só quando há bot em erro, com o motivo e botão que abre o chat", () => {
   assert.ok(html.includes('<div id="errs" hidden></div>'));
   const f = html.slice(html.indexOf("function faixaErro("), html.indexOf("function esquerda("));
@@ -143,7 +136,9 @@ test("rótulos do mapa desviam do letreiro COPA e dos textos do piso (colisão c
   assert.ok(html.includes("obstTexto(t,m,sz);return t;}"), "textos do piso (ÁREA DE TRABALHO / COPA · DESCANSO) viram obstáculo");
   // os balões consideram esses retângulos (rects) além dos outros bots; rects nasce antes do primeiro texto
   assert.ok(html.indexOf(" var rects=[];") > 0 && html.indexOf(" var rects=[];") < html.indexOf("function obstTexto("));
-  assert.ok(html.includes("obst=rects.filter(function(r){return r.nome!==b.nome;})"));
+  // o rótulo também desvia de TODOS os bots do piso, inclusive o próprio dono (correção B), via posicionaRotulo
+  assert.ok(html.includes("posicionaRotulo(b.x,b.y,w,h,postos,rects,vb)"));
+  assert.ok(!html.includes("r.nome!==b.nome"));
 });
 
 test("LISTA: avatar de cada linha usa o mesmo boneco do mapa (look + foto) e ids de gradiente nunca repetem", () => {
