@@ -1,5 +1,5 @@
 // Café no sofá: quem vai (só idle há 10 min ou mais), limite de assentos, ordem por
-// tempo ocioso, assento estável e exclusão de waiting_user/error. Mais o painel embutir a lógica.
+// tempo ocioso, assento estável e exclusão de waiting_user/error. (O painel ANA usa a copa; sofaLugares ficou só como módulo testado.)
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { sofaLugares } from "../src/cafe.js";
@@ -56,8 +56,8 @@ test("empate no tempo ocioso: ordem pelo nome (estável)", () => {
   assert.deepEqual(sofaLugares([b("Zé", "idle", 20), b("Ana", "idle", 20)], AGORA, 1, null), { Ana: 0 });
 });
 
-test("painel embute a lógica do café (sofá, xícara com vapor, fila compartilhada com as passagens)", () => {
+test("painel não embute mais o café andando até o sofá: quem descansa já fica na copa (ver painel.test.ts)", () => {
   const html = panelPage("n");
-  for (const s of ["var sofaLugares=function sofaLugares", "atualizaCafe", "noSofa", "caneca", ".vapor", "pausa pro café", "planejaCafe", "filaPass"])
-    assert.ok(html.includes(s), "faltou " + s);
+  assert.ok(!html.includes("sofaLugares"), "a copa substitui o sofá com 3 lugares");
+  for (const s of ["caneca", ".vapor", "slotCopa", "distribuiCopa"]) assert.ok(html.includes(s), "faltou " + s);
 });
