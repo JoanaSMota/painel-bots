@@ -144,10 +144,19 @@ export function stateToDna(state: State, prev?: Record<string, unknown> | null):
   };
 }
 
+/** Cache curto de leitura: o painel faz poll a cada 10s; evita RPC em rajadas no mesmo isolate. */
+export const REFRESH_TTL_MS = 2500;
+
+function cloneState(state: State): State {
+  return JSON.parse(JSON.stringify(state)) as State;
+}
+
 export class SupabaseStore extends Store {
   private opts: SupabaseOpts;
   private version = 0;
   private raw: Record<string, unknown> | null = null;
+  private refreshedAt = 0;
+  private writeChain: Promise<void> = Promise.resolve();
   override mode: "arquivo" | "memória" = "arquivo";
 
   private constructor(opts: SupabaseOpts) {
@@ -158,8 +167,13 @@ export class SupabaseStore extends Store {
   /** Nome distinto de Store.open (assinatura incompatível). */
   static async connect(opts: SupabaseOpts): Promise<SupabaseStore> {
     const s = new SupabaseStore(opts);
-    await s.refresh();
+    await s.refresh({ force: true });
     return s;
+  }
+
+  /** Versão otimista do documento no Supabase (para ETag). */
+  get docVersion(): number {
+    return this.version;
   }
 
   private async rpc(fn: string, args: Record<string, unknown>): Promise<unknown> {
@@ -191,35 +205,43 @@ export class SupabaseStore extends Store {
     return data;
   }
 
-  async refresh(): Promise<void> {
+  async refresh(opts: { force?: boolean } = {}): Promise<void> {
+    if (!opts.force && Date.now() - this.refreshedAt < REFRESH_TTL_MS) return;
     const row = (await this.rpc("painel_get_state", { p_secret: this.opts.secret })) as DnaRow;
     this.version = Number(row?.version || 0);
     this.raw = row?.v && typeof row.v === "object" ? (row.v as Record<string, unknown>) : {};
     this.state = dnaToState(this.raw);
+    this.refreshedAt = Date.now();
+  }
+
+  private async putOnce(payload: Record<string, unknown>, version: number): Promise<void> {
+    await this.rpc("painel_put_state", {
+      p_secret: this.opts.secret,
+      p_v: payload,
+      p_version: version,
+    });
+    this.raw = payload;
+    this.version = version + 1;
+    this.refreshedAt = Date.now();
   }
 
   override async persist(): Promise<void> {
-    // Re-lê versão se outro writer avançou; em conflito, tenta de novo uma vez.
-    const payload = stateToDna(this.state, this.raw);
-    try {
-      await this.rpc("painel_put_state", {
-        p_secret: this.opts.secret,
-        p_v: payload,
-        p_version: this.version,
-      });
-      this.raw = payload;
-      this.version += 1;
-    } catch (e) {
-      await this.refresh();
-      const again = stateToDna(this.state, this.raw);
-      await this.rpc("painel_put_state", {
-        p_secret: this.opts.secret,
-        p_v: again,
-        p_version: this.version,
-      });
-      this.raw = again;
-      this.version += 1;
-      void e;
-    }
+    // Serializa writes neste isolate; em conflito de versão, reenvia o estado LOCAL
+    // (não o remoto) com a versão nova — o bug antigo fazia refresh() apagar o apply().
+    const run = this.writeChain.then(async () => {
+      const local = cloneState(this.state);
+      const payload = stateToDna(local, this.raw);
+      try {
+        await this.putOnce(payload, this.version);
+        this.state = local;
+      } catch {
+        await this.refresh({ force: true });
+        const again = stateToDna(local, this.raw);
+        await this.putOnce(again, this.version);
+        this.state = local;
+      }
+    });
+    this.writeChain = run.catch(() => {});
+    return run;
   }
 }

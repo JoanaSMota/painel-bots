@@ -1012,7 +1012,8 @@ function vivo(ok){var v=$('vivo');v.classList.toggle('off',!ok);$('vivotxt').tex
 function relogio(){$('hora').textContent=fHora.format(new Date());}
 // só redesenha quando algo mudou (ou a cada minuto, para os "há X min")
 function assinatura(s){return JSON.stringify([s.bots,s.roster,s.floors,s.usage,s.feed,s.avatars])+'|'+Math.floor(Date.now()/60000);}
-function load(){fetch('/api/state',{credentials:'same-origin',cache:'no-store'}).then(function(r){if(r.status===401){location.href='/';return null;}return r.json();})
+var etag=null;
+function load(){var h={};if(etag)h['If-None-Match']=etag;fetch('/api/state',{credentials:'same-origin',cache:'no-store',headers:h}).then(function(r){if(r.status===401){location.href='/';return null;}var t=r.headers.get('ETag');if(t)etag=t;if(r.status===304){vivo(true);return null;}if(!r.ok)throw new Error(String(r.status));return r.json();})
  .then(function(s){if(!s)return;st=s;vivo(true);marcaMov();var a=assinatura(s);if(aba==='org')orgLoad();novasPassagens(s.handoffs);if(a!==sig){sig=a;desenhar();}})
  .catch(function(){vivo(false);});}
 $('abas').addEventListener('click',function(e){var b=e.target.closest?e.target.closest('button'):null;if(!b)return;var a=b.getAttribute('data-aba');if(a===aba)return;aba=a;zoom=null;neon=null;desenhar();});

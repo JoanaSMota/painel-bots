@@ -293,11 +293,25 @@ export function createHandler(opts: AppOptions): http.RequestListener {
       }
 
       if (route === "/api/state") {
-        if (method !== "GET") return json(405, { error: "use GET" });
+        if (method !== "GET" && method !== "HEAD") return json(405, { error: "use GET" });
         if (!authed(req)) return json(401, { error: "não autorizado" });
-        const refresh = (store as { refresh?: () => Promise<void> }).refresh;
+        const refresh = (store as { refresh?: (o?: { force?: boolean }) => Promise<void> }).refresh;
         if (typeof refresh === "function") await refresh.call(store);
         store.pruneHandoffs();
+        const ver = (store as { docVersion?: number }).docVersion;
+        const etag = typeof ver === "number" ? `W/"dna-${ver}"` : undefined;
+        if (etag) {
+          res.setHeader("ETag", etag);
+          const inm = req.headers["if-none-match"];
+          if (typeof inm === "string" && inm === etag) {
+            res.writeHead(304);
+            return res.end();
+          }
+        }
+        if (method === "HEAD") {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          return res.end();
+        }
         return json(200, store.state);
       }
 

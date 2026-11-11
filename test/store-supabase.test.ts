@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { dnaToState, stateToDna } from "../src/store-supabase.js";
+import { REFRESH_TTL_MS, dnaToState, stateToDna } from "../src/store-supabase.js";
 
 test("dnaToState mapeia looks/chat/groups/routines para o bot", () => {
   const st = dnaToState({
@@ -33,4 +33,9 @@ test("stateToDna preserva subtime do groups anterior", () => {
   const out = stateToDna(st, { groups: { CMO: "Comercial + Marketing / Mkt" }, metrics: { CMO: [] } });
   assert.equal((out.groups as Record<string, string>).CMO, "Comercial + Marketing / Mkt");
   assert.ok(Array.isArray((out.metrics as Record<string, unknown>).CMO));
+});
+
+test("REFRESH_TTL_MS cobre rajadas de poll sem ser maior que o intervalo do painel", () => {
+  assert.ok(REFRESH_TTL_MS >= 1000);
+  assert.ok(REFRESH_TTL_MS < 10_000);
 });
