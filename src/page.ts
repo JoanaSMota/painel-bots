@@ -3,6 +3,7 @@
 // textContent e atributos SVG. Sem CDN nem dependências: tudo inline (SVG + CSS); as fontes vêm de /fonts/ (do próprio serviço).
 import { floorOrder } from "./floors.js";
 import { frescor } from "./frescor.js";
+import { mudouSentado, rotaEscritorio, trajeto } from "./caminhada.js";
 import { elevSeta } from "./elevador.js";
 import { cargoCurto, nomeCurto, orgArvore, orgCasa, orgNovo } from "./organograma.js";
 import { distribuiCopa, parados, posicionaRotulo, sentaNaMesa } from "./painel.js";
@@ -290,7 +291,7 @@ var VERBO={working:'começou',idle:'parou',waiting_user:'pediu você',error:'deu
 var COR_ST={working:'#00F0FF',idle:'#6B7C9E',waiting_user:'#D4AF37',error:'#FF3B6B',done:'#6B7C9E',none:'#6B7C9E'};
 var CORES={violet:'#8b5cf6',blue:'#3b82f6',cyan:'#06b6d4',green:'#22c55e',orange:'#f97316',red:'#ef4444',black:'#2b2b33',gray:'#9ca3af',grey:'#9ca3af'};
 var HANDOFF_MS=8000,PARADO_H=12,ASSENTOS_MESA=5;
-var st=null,andarSel=null,botSel=null,aba='mapa',fechados={},uid=0,geo=null,sig='',vistos=null,ativos=[],hoTimer=0,slotCopa={};
+var st=null,andarSel=null,botSel=null,aba='mapa',fechados={},uid=0,geo=null,sig='',vistos=null,ativos=[],hoTimer=0,slotCopa={},elevCtl=null;
 // transições: troca de andar (1,5 s) e zoom no bot (1 s); com movimento reduzido, só esmaecimento
 var RM=window.matchMedia('(prefers-reduced-motion: reduce)'),zoom=null,neon=null,cam0={s:1,x:0,y:0},animCam=false,transAndar=0,ultSel='';
 function tf(c){return 'translate('+c.x.toFixed(1)+'px,'+c.y.toFixed(1)+'px) scale('+c.s.toFixed(3)+')';}
@@ -531,7 +532,7 @@ function cena(lista){
   quad(G0,pts_.map(function(p){return [cx+(p[0]-cx)*.72,cy+(p[1]-cy)*.72,.02];}),'none',{stroke:'#6366F1','stroke-opacity':.6,'stroke-dasharray':'4 4'});})();
  // ---- objetos (painter) ----
  var OBJ=[],add=function(k,f){OBJ.push({k:k,f:f});};
- var bals=[],bgs={},pos={},objPar=sv('g',null,mov);
+ var bals=[],bgs={},pos={},objPar=sv('g',null,mov),seat={},copaP={},ais=[],balEl={};
  // desenha um bot (na mesa ou na copa): grupo clicável, brilho de status, anel de seleção e dica no hover
  function poeBot(par,nome,x,y,z,tam,copa,cup){var b=bot(nome),s=stt(nome),base=P(x,y,z),fp=P(x,y,copa?z:0);
   var emNeon=nome===neon,bg=sv('g',{class:'bot-g '+s+(copa?' cafe':'')+(emNeon?' neon':'')},par);bgs[nome]=bg;
@@ -558,8 +559,8 @@ function cena(lista){
   return bg;}
  // ================= ÁREA DE TRABALHO: mesas de 5 estações (cada bot tem a sua, pelo lugar na lista do andar) =================
  var XS=[2.0,4.3,6.6,8.9,11.2],TX0=.9,TX1=12.3;
- for(var t=0;t<ND;t++){var ty=2.6+t*3.5,sy=ty-.9,ne=Math.min(ASSENTOS_MESA,n-t*ASSENTOS_MESA),tx1=ne>=ASSENTOS_MESA?TX1:XS[ne-1]+1.2;
-  for(var s2=0;s2<ne;s2++)(function(t,s2,ty,sy){var nome=lista[t*ASSENTOS_MESA+s2],x=XS[s2],senta=sentaNaMesa(stt(nome));
+ for(var t=0;t<ND;t++){var ty=2.6+t*3.5;ais.push(ty-1.75);var sy=ty-.9,ne=Math.min(ASSENTOS_MESA,n-t*ASSENTOS_MESA),tx1=ne>=ASSENTOS_MESA?TX1:XS[ne-1]+1.2;
+  for(var s2=0;s2<ne;s2++)(function(t,s2,ty,sy){var nome=lista[t*ASSENTOS_MESA+s2],x=XS[s2],senta=sentaNaMesa(stt(nome));if(senta)seat[nome]={x:x,y:sy+.05,ay:sy-.85,z:.7};
    add(1000+t*10+.1+s2*.01,function(){var g=sv('g',null,objPar);cadeira(g,x,senta?sy:sy-.25,senta?'#2F3B8C':'#20296B');if(senta)poeBot(g,nome,x,sy+.05,.7,64,0,0);});
    add(1000+t*10+.6+s2*.01,function(){var g=sv('g',null,objPar);monitor(g,x,ty+.55,senta?stt(nome):'idle');if(!senta&&s2%2===0)caneca(g,x+.9,ty+.4,1.05,false);});})(t,s2,ty,sy);
   (function(t,ty,tx1){add(1000+t*10+.5,function(){mesa(objPar,TX0,tx1,ty,ty+1.3);});})(t,ty,tx1);}
@@ -608,9 +609,9 @@ function cena(lista){
  var dorme=lista.filter(function(nn){return !sentaNaMesa(stt(nn));}),mapaC=distribuiCopa(dorme,slotCopa,COPA.length);
  Object.keys(slotCopa).forEach(function(k){if(dorme.indexOf(k)<0)delete slotCopa[k];});dorme.forEach(function(k){slotCopa[k]=mapaC[k];});
  dorme.forEach(function(nn){var L=lugarCopa(mapaC[nn]),x=L[1],y=L[2],hh=0;for(var q=0;q<nn.length;q++)hh=(hh*31+nn.charCodeAt(q))%997;
-  add(2010+x+y+.15,function(){poeBot(objPar,nn,x,y,COPA_Z[L[0]],56,1,L[0]!=='stand'&&hh%3!==0);});});
+  copaP[nn]={x:x,y:y,z:COPA_Z[L[0]]};add(2010+x+y+.15,function(){poeBot(objPar,nn,x,y,COPA_Z[L[0]],56,1,L[0]!=='stand'&&hh%3!==0);});});
  OBJ.sort(function(a,b){return a.k-b.k;}).forEach(function(o){o.f();});
- var bl=sv('g',null,mov),hl=sv('g',{class:'passante'},mov),tl=sv('g',{class:'passante'},mov);
+ var wl=sv('g',{class:'passante'},mov),bl=sv('g',null,mov),hl=sv('g',{class:'passante'},mov),tl=sv('g',{class:'passante'},mov);
  // ---- rótulos fixos só de quem trabalha, espera ou está com erro (sem se sobrepor; quem precisa de atenção escolhe lugar primeiro) ----
  var postos=[],PRI={waiting_user:0,error:0,working:1};
  bals.sort(function(a,b){return (PRI[a.s]-PRI[b.s])||(a.y-b.y);});
@@ -619,13 +620,13 @@ function cena(lista){
  bals.forEach(function(b){var nome=trunc(b.nome,22),l2=b.s==='waiting_user'?'esperando há '+(dur(b.at)||'0 min'):b.s==='error'?(b.step?trunc(b.step,30):'deu erro'):(b.step?trunc(b.step,30):'trabalhando');
   var w=Math.ceil(Math.max(larg(nome,15,700),larg(l2,13,500))+34),h=48,c=STL[b.s];
   var pp=posicionaRotulo(b.x,b.y,w,h,postos,rects,vb),lx=pp.x,ly=pp.y;postos.push({x:lx,y:ly,w:w,h:h});
-  var sel=b.nome===botSel,gg=sv('g',{class:'balao '+b.s+(b.nome===neon?' neon':'')},bl);gg.addEventListener('click',function(ev){ev.stopPropagation();focar(b.nome);});
+  var sel=b.nome===botSel,gg=sv('g',{class:'balao '+b.s+(b.nome===neon?' neon':'')},bl);gg.addEventListener('click',function(ev){ev.stopPropagation();focar(b.nome);});balEl[b.nome]=gg;
   if(b.nome===zoom)gg.classList.add('foco');
   var ax=Math.max(lx+12,Math.min(lx+w-12,b.x));sv('line',{x1:ax,y1:ly+h,x2:b.x,y2:b.y-4,stroke:c.c,'stroke-opacity':.8},gg);
   sv('rect',{x:lx,y:ly,width:w,height:h,rx:11,fill:'rgba(5,8,17,.93)',stroke:sel?'#FAFBFF':c.c,'stroke-width':sel?2:1.4,class:'borda'},gg);sv('rect',{x:lx,y:ly,width:w,height:h,rx:11,fill:c.c,'fill-opacity':.1},gg);
   if(b.nome===neon)sv('rect',{x:lx-1,y:ly-1,width:w+2,height:h+2,rx:12,fill:'none',stroke:'#ecfeff','stroke-width':1.2,class:'neon-pulso'},gg);
   sv('circle',{cx:lx+15,cy:ly+17,r:4.5,fill:c.c},gg);sv('text',{x:lx+28,y:ly+21,'font-size':15,'font-weight':700,fill:'#FAFBFF'},gg,nome);sv('text',{x:lx+15,y:ly+39,'font-size':13,'font-weight':500,fill:c.t},gg,l2);});
- geo={andar:andarSel,pos:pos,bgs:bgs,rects:rects,postos:postos,vb:vb,hl:hl,tl:tl,elevEls:elevEls,elevSt:'',elevPt:P(.3,emd,1.1),elevSai:P(.9,emd,.2),mov:mov};
+ geo={andar:andarSel,pos:pos,bgs:bgs,rects:rects,postos:postos,vb:vb,hl:hl,tl:tl,elevEls:elevEls,elevSt:'',elevPt:P(.3,emd,1.1),elevSai:P(.9,emd,.2),mov:mov,seat:seat,copaP:copaP,ais:ais,wl:wl,bal:balEl,ev:{x:.06,y:emd}};
  // câmera: zoom centraliza o bot no meio da cena
  var cxv=(vb.x0+vb.x1)/2,cyv=(vb.y0+vb.y1)/2,ZM=1.7,al=zoom&&pos[zoom]?pos[zoom]:null,c1=al&&!RM.matches?{s:ZM,x:cxv-al.x*ZM,y:cyv-al.y*ZM}:{s:1,x:0,y:0};
  if(!al)zoom=null;cam.classList.toggle('zoom',!!zoom);cam.classList.toggle('com-neon',!!neon);cam.style.transformOrigin='0 0';cam.style.transform=tf(c1);
@@ -637,7 +638,7 @@ function cena(lista){
   mov.animate([{transform:'translateY('+d+'px) scale(.92)',opacity:0},{transform:'translateY('+(d*0.5)+'px) scale(.92)',opacity:.35,offset:.5},{transform:'translateY(0) scale(1)',opacity:1}],o);
   a1.onfinish=function(){velho.remove();};}
  else if(transAndar){mov.animate([{opacity:0},{opacity:1}],{duration:400,easing:'ease-in-out'});}
- transAndar=0;desenhaHandoffs();}
+ transAndar=0;desenhaHandoffs();if(velho)pendMov=[];else iniciaMov();if(atores.length)quadroJa();else if(filaPass.length)agenda();}
 // dica no hover (quem descansa não tem rótulo fixo): nome + status
 function dica(nome){if(!geo)return;geo.tl.replaceChildren();if(!nome||!geo.pos[nome])return;
  var b=bot(nome),s=stt(nome),p=geo.pos[nome],l1=nome,l2=NOME_ST[s]+(b.status_at?' · '+dur(b.status_at):'');
@@ -650,17 +651,19 @@ function dica(nome){if(!geo)return;geo.tl.replaceChildren();if(!nome||!geo.pos[n
 // ---- passagem de tarefa (handoff): linha animada ciano→roxo com seta e a tarefa, por ~8 s ----
 // Mesmo andar: de um bot ao outro. Outro andar: do bot até o elevador (que abre e mostra a seta do painel e o andar).
 // Estado do elevador: o = quanto as portas estão abertas (0 a 1); dir = 'sobe'/'desce'/null; aceso = painel aceso
-function elevPoe(o,dir,andar,aceso){var E=geo&&geo.elevEls;if(!E)return;var ch=o.toFixed(2)+'|'+dir+'|'+andar+'|'+aceso;if(geo.elevSt===ch)return;geo.elevSt=ch;
+function elevPoe(o,dir,andar,aceso){var E=geo&&geo.elevEls;if(!E)return;if(elevCtl!==null)o=elevCtl;var ch=o.toFixed(2)+'|'+dir+'|'+andar+'|'+aceso;if(geo.elevSt===ch)return;geo.elevSt=ch;
  var dy=o*E.w;E.pE.setAttribute('transform','translate('+(dy*A).toFixed(1)+' '+(-dy*B).toFixed(1)+')');E.pD.setAttribute('transform','translate('+(-dy*A).toFixed(1)+' '+(dy*B).toFixed(1)+')');
  E.cima.setAttribute('display',dir==='sobe'?'inline':'none');E.baixo.setAttribute('display',dir==='desce'?'inline':'none');E.num.textContent=dir&&andar?String(andar):'';E.luz.setAttribute('opacity',aceso?'1':'0.3');}
 function novasPassagens(hs){if(!Array.isArray(hs))return;var ids={};hs.forEach(function(h){ids[h.id]=1;});
  // 1ª carga da página: as passagens que já estavam lá não são animadas
  if(vistos===null){vistos=ids;return;}
  var novas=hs.filter(function(h){return !vistos[h.id];}).reverse();for(var k in vistos)if(!ids[k])delete vistos[k];
- novas.forEach(function(h){vistos[h.id]=1;ativos.push({id:h.id,from:h.from,to:h.to,task:h.task,ate:Date.now()+HANDOFF_MS});});
+ novas.forEach(function(h){vistos[h.id]=1;ativos.push({id:h.id,from:h.from,to:h.to,task:h.task,ate:Date.now()+HANDOFF_MS});filaPass.push({h:h,t:Date.now()});});
+ if(filaPass.length>4)filaPass=filaPass.slice(-4);if(novas.length&&!RM.matches)agenda();
  // no máximo 8 linhas ao mesmo tempo
  while(ativos.length>8)ativos.shift();if(novas.length)desenhaHandoffs();}
 function desenhaHandoffs(){clearTimeout(hoTimer);var ag=Date.now(),chips=$('hochips');ativos=ativos.filter(function(a){return a.ate>ag;});if(chips)chips.replaceChildren();
+ if(!ativos.length&&!atores.some(function(x){return x.ix;}))elevCtl=null;
  if(!geo||aba!=='mapa'||geo.andar!==andarSel)return;
  geo.hl.replaceChildren();var cross=null,usados=[],todos=lista();
  ativos.forEach(function(h){var a=geo.pos[h.from],b=geo.pos[h.to],task=trunc(h.task||'Nova tarefa',30);
@@ -675,6 +678,8 @@ function desenhaHandoffs(){clearTimeout(hoTimer);var ag=Date.now(),chips=$('hoch
   // marcador do elevador (a porta pode ficar atrás de móveis): seta de sobe/desce e número do andar
   var mk=sv('g',null,geo.hl),sym=ix.dir==='sobe'?'▲':ix.dir==='desce'?'▼':'●';sv('circle',{cx:E[0],cy:E[1],r:17,fill:'rgba(5,8,17,.95)',stroke:'url(#ho)','stroke-width':2},mk);
   sv('text',{x:E[0],y:E[1]+5,'text-anchor':'middle','font-size':ix.andar>9?11:13,'font-weight':800,fill:'#00F0FF'},mk,sym+(ix.andar||''));});
+ // com a caminhada ligada, as portas só abrem quando o boneco chega (até lá, fechadas, com a seta acesa)
+ if(cross&&!RM.matches&&elevCtl===null)elevCtl=0;
  if(cross)elevPoe(1,cross.dir,cross.andar,true);else elevPoe(0,null,0,true);
  if(ativos.length)hoTimer=setTimeout(desenhaHandoffs,Math.max(200,Math.min.apply(null,ativos.map(function(a){return a.ate;}))-ag+30));}
 function linhaHo(a0,b0,a,b,l1,l2,usados){var par=geo.hl,v=geo.vb,mx=(a[0]+b[0])/2-30,my=Math.min(a[1],b[1])-62,path='M'+a+' Q'+mx+','+my+' '+b;
@@ -697,6 +702,71 @@ function linhaHo(a0,b0,a,b,l1,l2,usados){var par=geo.hl,v=geo.vb,mx=(a[0]+b[0])/
  sv('text',{x:lx+w/2,y:ly+19,'text-anchor':'middle','font-size':13,'font-weight':700,fill:'#FAFBFF'},par,l1);
  sv('text',{x:lx+w/2,y:ly+36,'text-anchor':'middle','font-size':13,'font-weight':600,fill:'#8B8FFA'},par,l2);}
 function colide(x,y,w,h,lista2){return lista2.some(function(p){return x<p.x+p.w+4&&x+w+4>p.x&&y<p.y+p.h+3&&y+h+3>p.y;});}
+// ---- caminhada: quem muda de status anda da copa à mesa (e volta); quem passa tarefa anda até o outro ou pelo elevador ----
+// Só transform/opacity, quadro a quadro (requestAnimationFrame); sem filtro e sem animação CSS. Com movimento reduzido ninguém anda.
+// Coordenadas do piso (as mesmas de P(x,y,z)): corredor esquerdo CL (elevador), corredor direito CR (copa), corredores de trás de cada fileira (geo.ais).
+var atores=[],filaPass=[],pendMov=[],sentAnt=null,raf=0,VEL=.005,CL=.45,CR=13.2,TAMW=60;
+function agenda(){if(!raf)raf=requestAnimationFrame(quadro);}
+function quadro(){raf=0;quadroJa();if(atores.length||filaPass.length)agenda();}
+// quem trocou de mesa para copa (ou o contrário) desde o estado anterior; só vale se o mapa do andar está na tela
+function marcaMov(){pendMov=[];var agora={};lista().forEach(function(n){agora[n]=sentaNaMesa(stt(n));});
+ if(sentAnt&&geo&&aba==='mapa'&&!RM.matches)mudouSentado(sentAnt,agora).forEach(function(m){var o=m.para==='mesa'?geo.copaP[m.nome]:geo.seat[m.nome];if(o)pendMov.push({nome:m.nome,para:m.para,de:o,t:Date.now()});});
+ sentAnt=agora;}
+function lugarDe(o){return o.ay!=null?{k:'a',x:o.x,y:o.y,ay:o.ay,z:o.z}:{k:'n',nc:CR,x:o.x,y:o.y,z:o.z};}
+function lugarNome(n){var o=geo.seat[n]||geo.copaP[n];return o?lugarDe(o):null;}
+function iniciaMov(){var pm=pendMov;pendMov=[];if(RM.matches||!geo)return;
+ pm.forEach(function(m){if(Date.now()-m.t>4000||atores.length>=8)return;var D=m.para==='mesa'?geo.seat[m.nome]:geo.copaP[m.nome];if(!D)return;
+  var A=lugarDe(m.de),B=lugarDe(D),r=trajeto(rotaEscritorio(A,B,geo.ais,CL,CR));if(r.len<.6)return;
+  atores=atores.filter(function(a){return a.nome!==m.nome;});
+  atores.push({tipo:'mov',nome:m.nome,fig:m.nome,andar:geo.andar,t0:performance.now(),ocultos:[m.nome],ix:null,fases:[{d:Math.min(7000,Math.max(1200,r.len/VEL)),r:r,zS:A.z,zE:B.z}]});});
+ if(atores.length)agenda();}
+// passagem de tarefa: mesmo andar = anda até o lado de quem recebe e volta; outro andar = anda até o elevador, as portas abrem, entra e fecham
+// (no andar de destino ele sai do elevador, vai até quem recebe e volta para o elevador)
+function planejarPass(h){if(RM.matches||!geo)return null;var A=lugarNome(h.from),B=lugarNome(h.to);if(!A&&!B)return null;
+ var ordem=times().map(function(t){return t.nome;}),ev=geo.ev,fases=[],ocultos=[],ix=null,frente={k:'n',nc:CL,x:CL,y:ev.y,z:0},ar=[CL,ev.y],pt=[ev.x,ev.y];
+ function anda(r,extra){var o={d:Math.min(7000,Math.max(1000,r.len/VEL)),r:r};for(var k in extra)o[k]=extra[k];fases.push(o);}
+ function ladoDe(Bq,lado){return Bq.k==='a'?{k:'a',x:Bq.x+lado*1.15,y:Bq.y-.1,ay:Bq.ay,z:0}:{k:'n',nc:CR,x:Bq.x-.9,y:Bq.y,z:0};}
+ function reverso(r){return trajeto(r.pts.slice().reverse());}
+ if(A&&B){var S=ladoDe(B,A.x>B.x?1:-1),ida=trajeto(rotaEscritorio(A,S,geo.ais,CL,CR));ocultos=[h.from];
+  anda(ida,{zS:A.z,zE:0,papel:1});fases.push({d:1300,fixo:[S.x,S.y],papel:1});anda(reverso(ida),{zS:0,zE:A.z});}
+ else if(A){ix=elevSeta(andarSel,bot(h.to).team||SEM,ordem);ocultos=[h.from];var r1=trajeto(rotaEscritorio(A,frente,geo.ais,CL,CR));
+  anda(r1,{zS:A.z,zE:0,papel:1,po:[0,1,.55,1]});
+  fases.push({d:700,de:ar,ate:pt,op0:1,op1:0,papel:1,po:[1,1]},{d:450,fixo:pt,op0:0,op1:0,po:[1,1]},{d:650,fixo:pt,op0:0,op1:0,po:[1,0]},{d:500,fixo:ar,op0:0,op1:0,po:[0,0],bgOp:[0,1]});}
+ else{ix=elevSeta(bot(h.from).team||SEM,andarSel,ordem);var S2=ladoDe(B,B.x>2.6?-1:1),r2=trajeto(rotaEscritorio(frente,S2,geo.ais,CL,CR));
+  fases.push({d:650,fixo:pt,op0:0,op1:0,po:[0,1]},{d:700,de:pt,ate:ar,op0:0,op1:1,po:[1,1]});
+  anda(r2,{zS:0,zE:0,papel:1,po:[1,0,0,.35]});fases.push({d:1300,fixo:[S2.x,S2.y],papel:1,po:[0,0]});
+  anda(reverso(r2),{zS:0,zE:0,po:[0,1,.55,1]});fases.push({d:700,de:ar,ate:pt,op0:1,op1:0,po:[1,1]},{d:450,fixo:pt,op0:0,op1:0,po:[1,1]},{d:650,fixo:pt,op0:0,op1:0,po:[1,0]});}
+ var total=fases.reduce(function(s2,f){return s2+f.d;},0);
+ // a linha com a tarefa fica na tela enquanto o boneco anda
+ ativos.forEach(function(a){if(a.id===h.id)a.ate=Math.max(a.ate,Date.now()+total+800);});desenhaHandoffs();
+ return {tipo:'pass',nome:h.from,fig:h.from,andar:geo.andar,t0:performance.now(),fases:fases,ocultos:ocultos,ix:ix};}
+function quadroJa(){
+ while(!atores.some(function(a){return a.tipo==='pass';})&&filaPass.length&&geo&&aba==='mapa'){var it=filaPass.shift();if(Date.now()-it.t>10000)continue;var p=planejarPass(it.h);if(p)atores.push(p);}
+ atores=atores.filter(function(a){
+  if(!geo||aba!=='mapa'||geo.andar!==a.andar){limpaAtor(a);return false;}
+  var t=performance.now()-a.t0,f=null,u=0;for(var i=0;i<a.fases.length;i++){if(t<a.fases[i].d){f=a.fases[i];u=t/f.d;break;}t-=a.fases[i].d;}
+  if(!f){limpaAtor(a);return false;}desenhaAtor(a,f,u);return true;});}
+function desenhaAtor(a,f,u){var x,y,z=0,op=1,bob=0,tilt=0,o=null;
+ if(f.r){var dd=u*f.r.len,q=f.r.at(dd);x=q[0];y=q[1];z=(f.zS||0)*Math.max(0,1-dd/.6)+(f.zE||0)*Math.max(0,1-(f.r.len-dd)/.6);
+  var w=performance.now()/1000*Math.PI*3.2;bob=Math.abs(Math.sin(w))*.12;tilt=Math.sin(w)*5;}
+ else if(f.fixo){x=f.fixo[0];y=f.fixo[1];}
+ else{x=f.de[0]+(f.ate[0]-f.de[0])*u;y=f.de[1]+(f.ate[1]-f.de[1])*u;}
+ if(f.op0!=null)op=f.op0+(f.op1-f.op0)*u;
+ if(f.po){var p0=f.po[2]||0,p1=f.po[3]||1;o=f.po[0]+(f.po[1]-f.po[0])*Math.max(0,Math.min(1,(u-p0)/(p1-p0)));}
+ if(a.ix){elevCtl=o==null?0:o;elevPoe(elevCtl,a.ix.dir,a.ix.andar,true);}
+ // o bot de verdade some enquanto o boneco anda (nunca aparece em dobro); na última fase ele reaparece
+ var bo=f.bgOp?f.bgOp[0]+(f.bgOp[1]-f.bgOp[0])*u:0;
+ a.ocultos.forEach(function(n){var e=geo.bgs[n],b2=geo.bal[n];if(e){e.style.transition='none';e.style.opacity=bo>=1?'':bo.toFixed(2);}if(b2)b2.style.opacity=bo>=1?'':bo.toFixed(2);});
+ var wk=a.wk;if(!wk||wk.parentNode!==geo.wl){wk=a.wk=sv('g',null,geo.wl);a.sh=sv('ellipse',{cx:0,cy:0,rx:19,ry:7,fill:'#000','fill-opacity':.3},wk);a.fg=sv('g',null,wk);
+  var fig=boneco(a.fig,bot(a.fig),TAMW);fig.setAttribute('x',(-TAMW/2).toFixed(1));fig.setAttribute('y',(-TAMW*.98).toFixed(1));a.fg.appendChild(fig);
+  a.pp=sv('g',null,a.fg);sv('rect',{x:TAMW*.24,y:-TAMW*.7,width:15,height:19,rx:2,fill:'#FAFBFF',stroke:'#00F0FF','stroke-width':1,transform:'rotate(12 '+(TAMW*.24+7)+' '+(-TAMW*.6)+')'},a.pp);
+  [-.56,-.47,-.38].forEach(function(ly){sv('line',{x1:TAMW*.24+3,y1:TAMW*ly,x2:TAMW*.24+11,y2:TAMW*ly+1.5,stroke:'#6366F1','stroke-width':1},a.pp);});}
+ var pp=P(x,y,z+bob);wk.setAttribute('transform','translate('+pp[0].toFixed(1)+' '+pp[1].toFixed(1)+')');wk.setAttribute('opacity',op.toFixed(2));
+ a.sh.setAttribute('transform','translate(0 '+((z+bob)*Z).toFixed(1)+')');a.fg.setAttribute('transform','rotate('+tilt.toFixed(1)+' 0 0)');a.pp.setAttribute('display',f.papel?'inline':'none');}
+function limpaAtor(a){if(a.wk&&a.wk.parentNode)a.wk.remove();
+ if(geo){a.ocultos.forEach(function(n){var e=geo.bgs[n],b2=geo.bal[n];if(e){e.style.opacity='';e.style.transition='';}if(b2)b2.style.opacity='';});}
+ // as portas ficam fechadas (a seta continua acesa enquanto a linha da passagem estiver na tela)
+ if(a.ix){elevCtl=0;if(geo)desenhaHandoffs();}}
 // ---- painéis ----
 function mostra(id,sim){var e=$(id);if(!e)return;if(sim)e.removeAttribute('hidden');else e.setAttribute('hidden','');}
 // tira do fim da lista o que não cabe inteiro (nada de linha cortada pela metade)
@@ -924,7 +994,7 @@ function relogio(){$('hora').textContent=fHora.format(new Date());}
 // só redesenha quando algo mudou (ou a cada minuto, para os "há X min")
 function assinatura(s){return JSON.stringify([s.bots,s.roster,s.floors,s.usage,s.feed,s.avatars])+'|'+Math.floor(Date.now()/60000);}
 function load(){fetch('/api/state',{credentials:'same-origin',cache:'no-store'}).then(function(r){if(r.status===401){location.href='/';return null;}return r.json();})
- .then(function(s){if(!s)return;st=s;vivo(true);var a=assinatura(s);if(aba==='org')orgLoad();novasPassagens(s.handoffs);if(a!==sig){sig=a;desenhar();}})
+ .then(function(s){if(!s)return;st=s;vivo(true);marcaMov();var a=assinatura(s);if(aba==='org')orgLoad();novasPassagens(s.handoffs);if(a!==sig){sig=a;desenhar();}})
  .catch(function(){vivo(false);});}
 $('abas').addEventListener('click',function(e){var b=e.target.closest?e.target.closest('button'):null;if(!b)return;var a=b.getAttribute('data-aba');if(a===aba)return;aba=a;zoom=null;neon=null;desenhar();});
 $('C').addEventListener('click',soltar);
@@ -954,5 +1024,5 @@ export function panelPage(nonce: string): string {
 <div class="lista-wrap" id="lista" hidden></div>
 <div class="org" id="org" hidden></div></section>
 <aside id="dir"></aside></main></div>
-<script nonce="${nonce}">var floorOrder=${floorOrder.toString()};var frescor=${frescor.toString()};var elevSeta=${elevSeta.toString()};var parados=${parados.toString()};var sentaNaMesa=${sentaNaMesa.toString()};var distribuiCopa=${distribuiCopa.toString()};var posicionaRotulo=${posicionaRotulo.toString()};var orgArvore=${orgArvore.toString()};var orgCasa=${orgCasa.toString()};var cargoCurto=${cargoCurto.toString()};var nomeCurto=${nomeCurto.toString()};var orgNovo=${orgNovo.toString()};${CLIENT}</script></body></html>`;
+<script nonce="${nonce}">var floorOrder=${floorOrder.toString()};var frescor=${frescor.toString()};var elevSeta=${elevSeta.toString()};var rotaEscritorio=${rotaEscritorio.toString()};var trajeto=${trajeto.toString()};var mudouSentado=${mudouSentado.toString()};var parados=${parados.toString()};var sentaNaMesa=${sentaNaMesa.toString()};var distribuiCopa=${distribuiCopa.toString()};var posicionaRotulo=${posicionaRotulo.toString()};var orgArvore=${orgArvore.toString()};var orgCasa=${orgCasa.toString()};var cargoCurto=${cargoCurto.toString()};var nomeCurto=${nomeCurto.toString()};var orgNovo=${orgNovo.toString()};${CLIENT}</script></body></html>`;
 }
