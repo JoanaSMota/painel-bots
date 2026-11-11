@@ -48,7 +48,7 @@ a{color:inherit;text-decoration:none}button,.btn{font:inherit;cursor:pointer;bor
 .h{font-family:var(--font-sans);font-weight:600;font-size:11px;letter-spacing:.14em;color:var(--ambar-texto);display:flex;align-items:center;gap:10px;margin-bottom:10px;text-transform:uppercase}
 .h .n{font-family:var(--font-sans);font-weight:700;font-size:13px;letter-spacing:0;background:rgba(232,176,76,.16);color:var(--ambar-texto);border:1px solid rgba(232,176,76,.5);border-radius:999px;padding:1px 9px}
 .h .n.c{background:rgba(232,176,76,.12);color:var(--ambar-texto);border-color:rgba(232,176,76,.4)}
-.mu{color:var(--marrom)}.vazio,.ok-linha{color:var(--tinta-suave)}.vazio{font-size:13px}
+.mu{color:var(--marrom)}.vazio,.ok-linha{color:var(--tinta-suave)}.vazio{font-size:14px}
 /* topbar */
 #topo{display:flex;align-items:center;padding:0 18px;gap:18px;height:62px;position:relative}
 #topo .marca{display:flex;align-items:center;gap:12px}
@@ -653,6 +653,12 @@ function cena(lista){
  add(3.1,function(){estante(objPar,4.5,7.7,.35,.2,2.55,29);});
  add(3.2,function(){estante(objPar,8.0,11.4,.35,.2,2.55,47);});
  add(3.3,function(){estante(objPar,11.6,13.4,.35,.2,2.4,63);});
+ // mesa de consulta permanente (biblioteca visível mesmo sem bots)
+ add(4.0,function(){var g=sv('g',null,objPar);mesa(g,2.2,7.0,5.2,6.4);
+  for(var i=0;i<8;i++)livro(g,2.5+i*.55,5.45,1.05,i+4,i%3!==0);
+  livro(g,3.2,5.7,1.13,12,false);livro(g,5.0,5.65,1.13,15,false);caneca(g,6.4,5.9,1.05,true);});
+ add(4.1,function(){estante(objPar,1.2,3.6,8.2,.2,2.2,71);});
+ add(4.2,function(){estante(objPar,4.0,6.6,8.2,.2,2.2,83);});
  // ================= LEITURA / COPA =================
  add(2003,function(){var g=sv('g',null,objPar);
   [2.0,2.8].forEach(function(z,zi){quad(g,[[15.2,.02,z],[21.2,.02,z],[21.2,.5,z],[15.2,.5,z]],'#3A2314',{stroke:'#E8B04C','stroke-opacity':.8});
