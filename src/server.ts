@@ -1,9 +1,20 @@
 import http from "node:http";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
-import { COOKIE_NAME, LoginLimiter, bearer, readCookie, safeEqual, sessionValue } from "./auth.js";
+import {
+  COOKIE_NAME,
+  LoginLimiter,
+  bearer,
+  chaveOk,
+  readCookie,
+  safeEqual,
+  sessionMatches,
+  sessionValue,
+} from "./auth.js";
 import { OrgSource } from "./organograma.js";
-import { loginPage, panelPage } from "./page.js";
+import { loginPage, panelPage, type PainelBrand } from "./page.js";
 import { AVATAR_MAX, Store } from "./store.js";
 import { ValidationError, botName, parseMessage } from "./validate.js";
 
@@ -15,12 +26,26 @@ export const BODY_LIMIT = 64 * 1024;
 // serviço (a CSP não aceita CDN), lidas uma vez ao subir. Não carregam dado nenhum, por isso não exigem login.
 const FONT_FILES = ["orbitron", "inter", "jetbrains-mono"] as const;
 const FONTS = new Map<string, Buffer>();
+const here = path.dirname(fileURLToPath(import.meta.url));
+const fontDirs = [
+  path.resolve(here, "../../assets/fonts"),
+  path.resolve(process.cwd(), "assets/fonts"),
+  path.resolve(process.cwd(), "painel-dna/fonts"),
+];
 for (const f of FONT_FILES) {
-  try {
-    FONTS.set(`/fonts/${f}.woff2`, readFileSync(new URL(`../../assets/fonts/${f}.woff2`, import.meta.url)));
-  } catch {
-    // sem a fonte, o painel cai nas fontes do sistema
+  let loaded = false;
+  for (const dir of fontDirs) {
+    const fp = path.join(dir, `${f}.woff2`);
+    if (!existsSync(fp)) continue;
+    try {
+      FONTS.set(`/fonts/${f}.woff2`, readFileSync(fp));
+      loaded = true;
+      break;
+    } catch {
+      /* tenta o próximo */
+    }
   }
+  void loaded;
 }
 
 export interface AppOptions {
@@ -29,6 +54,10 @@ export interface AppOptions {
   /** Organograma (Notion no servidor + cache + snapshot). Sem isso, só o snapshot embutido. */
   org?: OrgSource;
   log?: (line: string) => void;
+  /** Senha alternativa só do formulário web (PAINEL_LOGIN). Bearer/ingest continua com token. */
+  login?: string;
+  /** Marca do painel (DNA vs bots). */
+  brand?: PainelBrand;
 }
 
 class HttpError extends Error {
@@ -99,21 +128,23 @@ function clientIp(req: http.IncomingMessage): string {
   return first || req.socket.remoteAddress || "?";
 }
 
-export function createApp(opts: AppOptions): http.Server {
+export function createHandler(opts: AppOptions): http.RequestListener {
   const { token, store } = opts;
   const org = opts.org ?? new OrgSource();
   const log = opts.log ?? ((l: string) => console.log(l));
+  const login = (opts.login ?? "").trim();
+  const brand = opts.brand;
   const session = sessionValue(token);
   const limiter = new LoginLimiter();
 
   function authed(req: http.IncomingMessage): boolean {
     const b = bearer(req.headers.authorization);
-    if (b !== null) return safeEqual(b, token);
+    if (b !== null) return safeEqual(b.trim(), token);
     const c = readCookie(req.headers.cookie, COOKIE_NAME);
-    return c !== null && safeEqual(c, session);
+    return sessionMatches(c, token);
   }
 
-  return http.createServer(async (req, res) => {
+  return async (req, res) => {
     const method = req.method ?? "GET";
     let route = "/";
     try {
@@ -149,7 +180,11 @@ export function createApp(opts: AppOptions): http.Server {
     };
 
     try {
-      if (route === "/health" && (method === "GET" || method === "HEAD")) return json(200, { ok: true });
+      if (route === "/health" && (method === "GET" || method === "HEAD")) {
+        // Campo extra `login` só quando PAINEL_LOGIN está ativo (não quebra clientes antigos).
+        if (login && login.length >= 8) return json(200, { ok: true, login: true });
+        return json(200, { ok: true });
+      }
 
       const fonte = FONTS.get(route);
       if (fonte && (method === "GET" || method === "HEAD")) {
@@ -260,6 +295,8 @@ export function createApp(opts: AppOptions): http.Server {
       if (route === "/api/state") {
         if (method !== "GET") return json(405, { error: "use GET" });
         if (!authed(req)) return json(401, { error: "não autorizado" });
+        const refresh = (store as { refresh?: () => Promise<void> }).refresh;
+        if (typeof refresh === "function") await refresh.call(store);
         store.pruneHandoffs();
         return json(200, store.state);
       }
@@ -274,7 +311,7 @@ export function createApp(opts: AppOptions): http.Server {
         if (method !== "POST") return json(405, { error: "use POST" });
         // Ação humana do painel: só o cookie de login vale (Bearer não), e só da mesma origem.
         const c = readCookie(req.headers.cookie, COOKIE_NAME);
-        if (c === null || !safeEqual(c, session)) {
+        if (!sessionMatches(c, token)) {
           req.resume();
           return json(401, { error: "não autorizado" });
         }
@@ -315,18 +352,18 @@ export function createApp(opts: AppOptions): http.Server {
         const ip = clientIp(req);
         if (limiter.blocked(ip)) {
           req.resume();
-          return html(429, loginPage(nonce, "Muitas tentativas. Tente de novo em 15 minutos."));
+          return html(429, loginPage(nonce, "Muitas tentativas. Tente de novo em 15 minutos.", brand));
         }
         const raw = await readBody(req, 4096);
-        const chave = new URLSearchParams(raw).get("chave") ?? "";
-        if (!safeEqual(chave, token)) {
+        const chave = (new URLSearchParams(raw).get("chave") ?? "").trim();
+        if (!chaveOk(chave, token, login)) {
           limiter.fail(ip);
-          return html(401, loginPage(nonce, "Chave incorreta."));
+          return html(401, loginPage(nonce, "Chave incorreta.", brand));
         }
         limiter.ok(ip);
         res.writeHead(303, {
           Location: "/",
-          "Set-Cookie": `${COOKIE_NAME}=${session}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
+          "Set-Cookie": `${COOKIE_NAME}=${session}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000`,
         });
         return res.end();
       }
@@ -336,15 +373,15 @@ export function createApp(opts: AppOptions): http.Server {
         req.resume();
         res.writeHead(303, {
           Location: "/",
-          "Set-Cookie": `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`,
+          "Set-Cookie": `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`,
         });
         return res.end();
       }
 
       if (route === "/") {
         if (method !== "GET" && method !== "HEAD") return json(405, { error: "use GET" });
-        if (!authed(req)) return html(200, loginPage(nonce));
-        return html(200, panelPage(nonce));
+        if (!authed(req)) return html(200, loginPage(nonce, undefined, brand));
+        return html(200, panelPage(nonce, brand));
       }
 
       return json(404, { error: "não encontrado" });
@@ -353,5 +390,9 @@ export function createApp(opts: AppOptions): http.Server {
       if (e instanceof HttpError) return json(e.status, { error: e.message });
       return json(500, { error: "erro interno" });
     }
-  });
+  };
+}
+
+export function createApp(opts: AppOptions): http.Server {
+  return http.createServer(createHandler(opts));
 }

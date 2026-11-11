@@ -266,7 +266,13 @@ interface FallbackFile {
 }
 
 export function carregaSnapshot(): OrgPayload {
-  const f = JSON.parse(readFileSync(new URL("../../src/organograma-fallback.json", import.meta.url), "utf8")) as FallbackFile;
+  let raw: string;
+  try {
+    raw = readFileSync(new URL("./organograma-fallback.json", import.meta.url), "utf8");
+  } catch {
+    raw = readFileSync(new URL("../../src/organograma-fallback.json", import.meta.url), "utf8");
+  }
+  const f = JSON.parse(raw) as FallbackFile;
   const linhas: OrgLinha[] = Object.keys(f.linhas).map((nome) => {
     const r = f.linhas[nome] as FallbackFile["linhas"][string];
     const l: OrgLinha = { nome, reporta: r.rep };

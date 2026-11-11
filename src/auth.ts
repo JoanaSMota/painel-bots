@@ -12,9 +12,25 @@ export function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(sha(a), sha(b));
 }
 
+const SESSION_LABELS = ["painel-bots/sessao/v1", "painel-dna/sessao/v1", "painel/sessao/v1"] as const;
+
 /** Valor do cookie de sessão: HMAC da chave; nunca a chave em si. */
-export function sessionValue(token: string): string {
-  return createHmac("sha256", token).update("painel-bots/sessao/v1").digest("base64url");
+export function sessionValue(token: string, label: string = SESSION_LABELS[0]): string {
+  return createHmac("sha256", token).update(label).digest("base64url");
+}
+
+export function sessionMatches(cookieVal: string | null, token: string): boolean {
+  if (!cookieVal) return false;
+  return SESSION_LABELS.some((label) => safeEqual(cookieVal, sessionValue(token, label)));
+}
+
+/** Aceita PAINEL_TOKEN (Bearer/ingest) ou PAINEL_LOGIN (formulário web, mín. 8). */
+export function chaveOk(chave: string, token: string, login?: string): boolean {
+  const c = chave.trim();
+  if (!c) return false;
+  if (safeEqual(c, token)) return true;
+  const l = (login ?? "").trim();
+  return l.length >= 8 && safeEqual(c, l);
 }
 
 export function bearer(header: string | undefined): string | null {

@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": null,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api" }
+  ],
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 15,
+      "includeFiles": "{dist/**,assets/fonts/**,src/organograma-fallback.json}"
+    }
+  }
+}

@@ -274,10 +274,29 @@ function esc(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
-export function loginPage(nonce: string, erro?: string): string {
+export interface PainelBrand {
+  /** Nome curto no login e &lt;title&gt;. */
+  name?: string;
+  /** Título no topo (maiúsculas). */
+  titulo?: string;
+  /** Duas linhas da marca (ex.: ["A NOVA","ADVOCACIA"]). */
+  wm?: [string, string];
+  /** Esconde a aba ORGANOGRAMA (útil no DNA sem Notion ANA). */
+  hideOrg?: boolean;
+}
+
+const DEFAULT_BRAND: Required<PainelBrand> = {
+  name: "Painel dos bots",
+  titulo: "PAINEL DOS BOTS",
+  wm: ["A NOVA", "ADVOCACIA"],
+  hideOrg: false,
+};
+
+export function loginPage(nonce: string, erro?: string, brand?: PainelBrand): string {
+  const b = { ...DEFAULT_BRAND, ...brand };
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><title>Painel dos bots — entrar</title><style nonce="${nonce}">${STYLE}</style></head>
-<body><div class="login-wrap"><form class="login glass" method="post" action="/login"><h1>Painel dos bots</h1>
+<meta name="robots" content="noindex,nofollow"><title>${esc(b.name)} — entrar</title><style nonce="${nonce}">${STYLE}</style></head>
+<body><div class="login-wrap"><form class="login glass" method="post" action="/login"><h1>${esc(b.name)}</h1>
 <p>Digite a chave de acesso.</p>${erro ? `<p class="erro">${esc(erro)}</p>` : ""}
 <input type="password" name="chave" autocomplete="current-password" required autofocus aria-label="Chave">
 <button type="submit" class="entrar">Entrar</button></form></div></body></html>`;
@@ -1007,15 +1026,17 @@ fundo();moldura();relogio();setInterval(relogio,15000);load();setInterval(load,1
 
 const LOGO = `<svg width="64" height="40" viewBox="0 0 64 40" aria-hidden="true"><defs><linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#00F0FF"/><stop offset="1" stop-color="#00A9C9"/></linearGradient><linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8B8FFA"/><stop offset="1" stop-color="#6366F1"/></linearGradient></defs><path d="M20 3 L35 20 L20 37 L5 20Z" fill="rgba(0,240,255,.12)" stroke="url(#lg1)" stroke-width="2.4"/><path d="M44 3 L59 20 L44 37 L29 20Z" fill="rgba(99,102,241,.16)" stroke="url(#lg2)" stroke-width="2.4"/><path d="M20 3 L44 37 M44 3 L20 37 M5 20 H59" stroke="rgba(250,251,255,.45)" stroke-width="1"/><circle cx="20" cy="20" r="3.4" fill="#00F0FF"/><circle cx="44" cy="20" r="3.4" fill="#8B8FFA"/><circle cx="32" cy="20" r="2.4" fill="#FAFBFF"/></svg>`;
 
-export function panelPage(nonce: string): string {
+export function panelPage(nonce: string, brand?: PainelBrand): string {
+  const b = { ...DEFAULT_BRAND, ...brand };
+  const orgBtn = b.hideOrg ? "" : `<button type="button" data-aba="org">ORGANOGRAMA</button>`;
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="robots" content="noindex,nofollow"><title>Painel dos bots</title><style nonce="${nonce}">${STYLE}</style></head>
+<meta name="robots" content="noindex,nofollow"><title>${esc(b.name)}</title><style nonce="${nonce}">${STYLE}</style></head>
 <body><svg id="bg" aria-hidden="true"></svg><svg id="frame" aria-hidden="true"></svg>
 <div id="app">
-<header id="topo" class="glass"><div class="marca">${LOGO}<div class="wm">A NOVA<b>ADVOCACIA</b></div></div><div class="vsep"></div><div class="titulo">PAINEL DOS BOTS</div>
+<header id="topo" class="glass"><div class="marca">${LOGO}<div class="wm">${esc(b.wm[0])}<b>${esc(b.wm[1])}</b></div></div><div class="vsep"></div><div class="titulo">${esc(b.titulo)}</div>
 <div class="vivo" id="vivo"><span class="dot"></span><span id="vivotxt">carregando</span><span id="hora"></span></div>
 <div class="contas" id="contas"></div>
-<nav class="abas" id="abas" aria-label="Visões"><button type="button" data-aba="mapa">MAPA</button><button type="button" data-aba="lista">LISTA</button><button type="button" data-aba="org">ORGANOGRAMA</button></nav>
+<nav class="abas" id="abas" aria-label="Visões"><button type="button" data-aba="mapa">MAPA</button><button type="button" data-aba="lista">LISTA</button>${orgBtn}</nav>
 <form method="post" action="/logout"><button type="submit" class="sair">Sair</button></form></header>
 <div id="errs" hidden></div>
 <main id="cols"><aside id="esq"></aside>
