@@ -12,7 +12,7 @@ test("painel tem o filtro neon (contorno + brilho) e as peças do efeito", () =>
 });
 
 test("clique liga o neon e soltar (clique fora / Esc) desliga", () => {
-  assert.match(html, /function focar\(nome\)\{botSel=nome;neon=nome;/);
+  assert.match(html, /function focar\(nome\)\{botSel=nome;orgSelFora=null;neon=nome;/);
   assert.match(html, /function soltar\(\)\{if\(zoom\|\|neon\)\{[^}]*neon=null;/);
   // trocar de andar também desliga
   assert.match(html, /zoom=null;neon=null;cam0=/);

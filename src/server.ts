@@ -2,6 +2,7 @@ import http from "node:http";
 import { readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { COOKIE_NAME, LoginLimiter, bearer, readCookie, safeEqual, sessionValue } from "./auth.js";
+import { OrgSource } from "./organograma.js";
 import { loginPage, panelPage } from "./page.js";
 import { AVATAR_MAX, Store } from "./store.js";
 import { ValidationError, botName, parseMessage } from "./validate.js";
@@ -25,6 +26,8 @@ for (const f of FONT_FILES) {
 export interface AppOptions {
   token: string;
   store: Store;
+  /** Organograma (Notion no servidor + cache + snapshot). Sem isso, só o snapshot embutido. */
+  org?: OrgSource;
   log?: (line: string) => void;
 }
 
@@ -98,6 +101,7 @@ function clientIp(req: http.IncomingMessage): string {
 
 export function createApp(opts: AppOptions): http.Server {
   const { token, store } = opts;
+  const org = opts.org ?? new OrgSource();
   const log = opts.log ?? ((l: string) => console.log(l));
   const session = sessionValue(token);
   const limiter = new LoginLimiter();
@@ -258,6 +262,12 @@ export function createApp(opts: AppOptions): http.Server {
         if (!authed(req)) return json(401, { error: "não autorizado" });
         store.pruneHandoffs();
         return json(200, store.state);
+      }
+
+      if (route === "/api/organograma") {
+        if (method !== "GET") return json(405, { error: "use GET" });
+        if (!authed(req)) return json(401, { error: "não autorizado" });
+        return json(200, await org.get());
       }
 
       if (route === "/api/resolve") {

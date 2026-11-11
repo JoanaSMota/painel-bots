@@ -72,3 +72,62 @@ export function distribuiCopa(
     });
   return out;
 }
+
+/**
+ * Onde pôr o rótulo fixo de um bot no mapa. (bx, by) = centro e topo do boneco; w×h = tamanho do rótulo;
+ * `postos` = rótulos já colocados; `obst` = caixas de TODOS os bonecos do andar (inclusive o dono do rótulo)
+ * e dos textos do mapa (letreiro COPA etc.); `vb` = área visível. Tenta posições candidatas, das mais próximas
+ * (acima, depois lados, depois abaixo, depois mais longe) e fica com a primeira sem sobreposição com rótulos nem
+ * bonecos. Se nada cabe, aceita sobrepor bonecos (nunca outros rótulos, se der). `livre` diz se achou lugar limpo.
+ */
+export function posicionaRotulo(
+  bx: number,
+  by: number,
+  w: number,
+  h: number,
+  postos: { x: number; y: number; w: number; h: number }[],
+  obst: { x: number; y: number; w: number; h: number }[],
+  vb: { x0: number; y0: number; x1: number; y1: number },
+): { x: number; y: number; livre: boolean } {
+  var x0 = bx - w / 2;
+  var y0 = by - h - 26;
+  function colide(x: number, y: number, lista: { x: number; y: number; w: number; h: number }[]) {
+    return lista.some(function (p) {
+      return x < p.x + p.w + 4 && x + w + 4 > p.x && y < p.y + p.h + 3 && y + h + 3 > p.y;
+    });
+  }
+  function dentro(x: number, y: number) {
+    return x >= vb.x0 + 4 && x + w <= vb.x1 - 4 && y >= vb.y0 + 4 && y + h <= vb.y1 - 30;
+  }
+  var tent: number[][] = [];
+  [0, -1, 1, -2, 2, -3, 3, -4, 4].forEach(function (dy) {
+    [0, -0.5, 0.5, -1, 1, -1.5, 1.5, -2, 2, -3, 3].forEach(function (dx) {
+      tent.push([dx * (w + 8), dy * (h + 8) - (dx ? 6 : 0)]);
+    });
+  });
+  tent.sort(function (p, q) {
+    return Math.abs(p[0]!) / 2 + Math.abs(p[1]!) * 1.5 + (p[1]! > 0 ? 60 : 0) - (Math.abs(q[0]!) / 2 + Math.abs(q[1]!) * 1.5 + (q[1]! > 0 ? 60 : 0));
+  });
+  var ok: number[] | null = null;
+  var livre = false;
+  var i: number;
+  for (i = 0; i < tent.length && !ok; i++) {
+    var xx = x0 + tent[i]![0]!,
+      yy = y0 + tent[i]![1]!;
+    if (dentro(xx, yy) && !colide(xx, yy, postos) && !colide(xx, yy, obst)) {
+      ok = tent[i]!;
+      livre = true;
+    }
+  }
+  for (i = 0; i < tent.length && !ok; i++) {
+    var x3 = x0 + tent[i]![0]!,
+      y3 = y0 + tent[i]![1]!;
+    if (dentro(x3, y3) && !colide(x3, y3, postos)) ok = tent[i]!;
+  }
+  var d = ok || [0, 0];
+  return {
+    x: Math.max(vb.x0 + 4, Math.min(vb.x1 - 4 - w, x0 + d[0]!)),
+    y: Math.max(vb.y0 + 4, Math.min(vb.y1 - 30 - h, y0 + d[1]!)),
+    livre: livre,
+  };
+}
