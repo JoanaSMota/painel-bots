@@ -9,16 +9,21 @@ pronto para o Railway. Recebe atualizações em `POST /ingest` e mostra o painel
 | --- | --- | --- |
 | `PAINEL_TOKEN` | sim (mín. 32 caracteres) | Chave de acesso. Sem ela o serviço não sobe. |
 | `DATA_DIR` | não | Pasta do `state.json` (no Railway: o volume, ex. `/data`). Sem ela, só memória. |
+| `NOTION_TOKEN` | não | Token da integração do Notion, só para o ORGANOGRAMA. Lido apenas pelo servidor: nunca vai ao navegador nem ao log. Sem ele o organograma usa o snapshot embutido. A database precisa estar compartilhada com a integração. |
 | `PORT` | não (padrão 3000) | O Railway define sozinho. |
 
 ## Rotas
 
 - `POST /ingest`: só `Authorization: Bearer <PAINEL_TOKEN>` (cookie não vale), `Content-Type: application/json`, corpo até 64 KB. Retorna 401 sem chave, 400 com o erro do campo, 413 se for grande demais.
 - `GET /`: tela de login (nenhum dado) ou o painel. O login grava um cookie `HttpOnly; Secure; SameSite=Strict` com um HMAC da chave, nunca a chave. Também aceita Bearer.
-- `GET /api/state`: estado em JSON, protegido. O painel atualiza a cada 30 s.
+- `GET /api/state`: estado em JSON, protegido. O painel atualiza a cada 10 s e só redesenha quando algo mudou.
+- `GET /api/organograma`: hierarquia do Notion (database Agentes, campo "Reporta a"), protegida como `/api/state`. O servidor consulta o Notion no máximo a cada 10 min (memória + `DATA_DIR/organograma-cache.json`). Se o Notion falhar, serve o último cache (`fonte: "cache"`, rótulo "dados do Notion de HH:MM (cache)"); sem cache e sem token, serve `src/organograma-fallback.json` (`fonte: "snapshot"`, "snapshot de 11/11"). Nunca derruba o painel.
 - `POST /avatar?bot=<nome>` (ou header `X-Bot: <nome em encodeURIComponent>`): foto do boneco. Só Bearer, `Content-Type: image/png`, até 512 KB (reduza para ~256 px antes). 401/415/400/413 nos erros. Gravada em `DATA_DIR/avatars/<sha256 do nome>.png`.
 - `GET /avatar/<nome>`: a foto, protegida por cookie ou Bearer (sem login → 401). Nada é público.
+- `GET /fonts/<newsreader-400|newsreader-400i|newsreader-500|newsreader-600|work-sans-400|work-sans-500|work-sans-600>.woff2`: fontes Biblioteca da Luz (Newsreader + Work Sans) servidas pelo próprio serviço (CSP `font-src 'self'`, sem CDN). Público, sem dado nenhum; qualquer outro nome → 404. Arquivos em `assets/fonts/` (licença OFL).
 - `GET /health`: público, retorna só `{"ok":true}`.
+
+O painel (visual ANA, tema escuro) tem as abas MAPA (escritório isométrico: quem trabalha, espera ou está com erro senta numa mesa; quem descansa fica na copa), LISTA (todos os bots) e ORGANOGRAMA (quem reporta a quem, com o mesmo boneco e a mesma cor de status do mapa; clicar num bot seleciona e mostra "No organograma" na coluna da direita), a faixa vermelha de erro, "Precisa de você" e "Parado há +12h". Uma passagem de bastão (`handoff`) vira uma linha animada por ~8 s (via elevador quando muda de andar).
 
 O painel separa os bots por time ("andares"). Quem não tem time fica em "Sem time". Sem `floors`, os andares vão em ordem alfabética; com `floors`, seguem a lista, os times fora dela vêm depois e "Sem time" fica por último.
 Cada bot guarda os últimos 10 passos (`recent`) e o estado guarda um feed global dos últimos 50 (`feed`), mostrados em "Passos recentes" e "Atividade". Um status igual ao anterior só atualiza o horário. Horários aparecem em America/Recife.

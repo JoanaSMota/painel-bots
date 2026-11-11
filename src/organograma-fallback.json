@@ -1,0 +1,400 @@
+{
+ "geradoEm": "2026-11-11T12:00:00-03:00",
+ "linhas": {
+  "Assinaturas": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [],
+   "cargo": "Auditor de Assinaturas e Recorrências",
+   "id": "a16e1e3d-cd61-4646-92e3-2841c712f697",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "Backup Bots": {
+   "rep": [
+    "Diretor Agentes"
+   ],
+   "sub": [],
+   "cargo": "Guardião de Backups dos Bots",
+   "id": "02cf9074-d8dc-4e3a-82a5-8f8b16d93c51",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Caçador de Vendas ANA": {
+   "rep": [
+    "DV ANA"
+   ],
+   "sub": [],
+   "cargo": "SDR de Outbound",
+   "id": "1f055865-e0f6-416f-b18c-e2f0adf0e394",
+   "criado": "2026-10-18T16:13:15Z"
+  },
+  "CEO ANA": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [
+    "CFO ANA",
+    "COO ANA",
+    "CS ANA",
+    "DM ANA",
+    "DV ANA"
+   ],
+   "cargo": "CEO / co-piloto executivo da ANA",
+   "id": "e372189f-7bb5-4471-8849-aa8200d22ae2",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "CFO ANA": {
+   "rep": [
+    "CEO ANA"
+   ],
+   "sub": [],
+   "cargo": "Diretor Financeiro (CFO / DF ANA)",
+   "id": "74dac628-7f0e-44b2-91e9-1531ec10d308",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Comprador": {
+   "rep": [
+    "Donna Secretária · administrativo"
+   ],
+   "sub": [],
+   "cargo": "Consultor de Compras",
+   "id": "f309a461-0939-4d87-84e4-5712cd6d64a1",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "COO ANA": {
+   "rep": [
+    "CEO ANA"
+   ],
+   "sub": [
+    "Eventos ANA",
+    "Formações ANA",
+    "Processos ANA",
+    "Produto ANA",
+    "RH ANA"
+   ],
+   "cargo": "Diretor de Operações (COO)",
+   "id": "0b64ea5d-8dea-40b2-baa5-9d8dfdd4962e",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Copy Max Peters": {
+   "rep": [
+    "DM ANA"
+   ],
+   "sub": [],
+   "cargo": "Copywriter no método Max Peters",
+   "id": "b532bdd4-431e-44e9-a0c2-682274b2397b",
+   "criado": "2026-11-07T16:44:17Z"
+  },
+  "CS ANA": {
+   "rep": [
+    "CEO ANA"
+   ],
+   "sub": [],
+   "cargo": "Diretor de Sucesso do Cliente",
+   "id": "57969cd4-71cf-47d2-ab57-643eedec9bd9",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Design ANA": {
+   "rep": [
+    "DM ANA"
+   ],
+   "sub": [],
+   "cargo": "Diretor de Arte / Designer de Criativos",
+   "id": "608bd39b-5e3a-4257-975f-d59757858321",
+   "criado": "2026-10-18T16:13:15Z"
+  },
+  "Diretor Agentes": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [
+    "Backup Bots",
+    "Dust Expert",
+    "Integra",
+    "PromptGenius"
+   ],
+   "cargo": "Designer de Bots (líder de infraestrutura)",
+   "id": "69391a3f-5d47-42af-9e3b-f26f6912a082",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "DM ANA": {
+   "rep": [
+    "CEO ANA"
+   ],
+   "sub": [
+    "Copy Max Peters",
+    "Design ANA",
+    "Editor Vídeo ANA",
+    "Radar IA Jurídica",
+    "SEO & AEO ANA",
+    "Social Selling ANA",
+    "Stalk Bot",
+    "Tráfego ANA"
+   ],
+   "cargo": "Diretor de Marketing",
+   "id": "bb4753e2-a4d6-49e6-8a46-eb2351bcf677",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Donna Secretária · administrativo": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [
+    "Comprador"
+   ],
+   "cargo": "Secretária Executiva Sênior",
+   "id": "7af171da-5e15-4c3f-a507-2f4dece7e10a",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "Dust Expert": {
+   "rep": [
+    "Diretor Agentes"
+   ],
+   "sub": [],
+   "cargo": "Especialista e Orquestrador do Dust",
+   "id": "4406e097-e382-47b1-8297-d4ee9cba7c6a",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "DV ANA": {
+   "rep": [
+    "CEO ANA"
+   ],
+   "sub": [
+    "Caçador de Vendas ANA"
+   ],
+   "cargo": "Diretor de Vendas",
+   "id": "cb54bce9-efe2-4922-be02-5fd4beeddd39",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Editor Vídeo ANA": {
+   "rep": [
+    "DM ANA"
+   ],
+   "sub": [],
+   "cargo": "Editor de Vídeo",
+   "id": "392fa01d-7066-4696-a270-b42d43249aa1",
+   "criado": "2026-10-18T16:13:15Z"
+  },
+  "Eventos ANA": {
+   "rep": [
+    "COO ANA"
+   ],
+   "sub": [],
+   "cargo": "Especialista em Eventos Presenciais",
+   "id": "35527fc2-b03a-430e-a879-27ef0372eb1d",
+   "criado": "2026-10-18T16:13:15Z"
+  },
+  "Formações ANA": {
+   "rep": [
+    "COO ANA"
+   ],
+   "sub": [],
+   "cargo": "Designer Instrucional",
+   "id": "b67aa13f-a0dd-42a8-92dc-149bcd6151c9",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Grok Bot": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [],
+   "cargo": "Porta de entrada geral",
+   "id": "4c9fe5b1-c319-4c9c-9705-fabb3fb57da7",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "Guru Financeiro": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [],
+   "cargo": "Consultor de Finanças Pessoais (CFP)",
+   "id": "0c9d3c47-1884-4f3a-be6b-1496180ce882",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "Integra": {
+   "rep": [
+    "Diretor Agentes"
+   ],
+   "sub": [],
+   "cargo": "Engenheiro de Integrações",
+   "id": "5b6403e6-7c2f-4f5e-a5a8-5788e73096af",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Isadora": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [],
+   "cargo": "Parceira de Paternidade",
+   "id": "e26018c0-658b-4aa1-a9e4-a6414555c7cb",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "Lucas Braga": {
+   "rep": [],
+   "sub": [
+    "Assinaturas",
+    "CEO ANA",
+    "Diretor Agentes",
+    "Donna Secretária · administrativo",
+    "Grok Bot",
+    "Guru Financeiro",
+    "Isadora",
+    "Obsidian",
+    "Pesquisador",
+    "Professor de Canto",
+    "Programador",
+    "Saúde Lucas",
+    "Teste de Produto"
+   ],
+   "cargo": "Fundador e CEO humano (decisão final)",
+   "id": "—",
+   "criado": "2026-10-18T16:09:40Z"
+  },
+  "Obsidian": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [],
+   "cargo": "Especialista no Cofre Obsidian",
+   "id": "1d66704e-6788-4b0f-a5cf-8cfe50fa7428",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "Pesquisador": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [],
+   "cargo": "Investigador Digital",
+   "id": "fc39cb41-102f-422c-a359-453af310f8ba",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "Plataforma ANA": {
+   "rep": [
+    "Produto ANA"
+   ],
+   "sub": [],
+   "cargo": "Engenheiro Lovable da Área do Aluno",
+   "id": "a57707d1-9ed5-4018-bf1f-74adb7186847",
+   "criado": "2026-10-18T16:13:15Z"
+  },
+  "Processos ANA": {
+   "rep": [
+    "COO ANA"
+   ],
+   "sub": [],
+   "cargo": "Dono de Processos",
+   "id": "2b395058-cae1-4219-bf0c-8b63a22baccd",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Produto ANA": {
+   "rep": [
+    "COO ANA"
+   ],
+   "sub": [
+    "Plataforma ANA"
+   ],
+   "cargo": "Dono de Produto (Product Owner)",
+   "id": "0a173ea5-7004-4366-9000-bdd4e326d365",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Professor de Canto": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [],
+   "cargo": "Professor Particular de Canto",
+   "id": "d6bcdf98-3ce0-4346-8059-79733fc69040",
+   "criado": "2026-11-03T08:44:54Z"
+  },
+  "Programador": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [],
+   "cargo": "Líder de Engenharia (repositórios GitHub)",
+   "id": "2d07da89-f7f9-471c-984f-c2876835e133",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "PromptGenius": {
+   "rep": [
+    "Diretor Agentes"
+   ],
+   "sub": [],
+   "cargo": "Meta-engenheiro de Prompts",
+   "id": "23e68380-ca73-4215-9a4b-49b98a563dd2",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Radar IA Jurídica": {
+   "rep": [
+    "DM ANA"
+   ],
+   "sub": [],
+   "cargo": "Editor de Notícias (IA no Direito)",
+   "id": "9b1ea4c6-67da-494c-b4a9-04213fb50ee4",
+   "criado": "2026-10-18T16:13:15Z"
+  },
+  "RH ANA": {
+   "rep": [
+    "COO ANA"
+   ],
+   "sub": [],
+   "cargo": "Diretora de Pessoas (RH)",
+   "id": "2d7933b4-c085-49bb-9528-aed8884cf3d3",
+   "criado": "2026-10-18T16:12:15Z"
+  },
+  "Saúde Lucas": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [],
+   "cargo": "Gestor de Saúde Pessoal",
+   "id": "2a77af3f-e069-49e4-9491-a07a4b138a1b",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "SEO & AEO ANA": {
+   "rep": [
+    "DM ANA"
+   ],
+   "sub": [],
+   "cargo": "Especialista SEO & AEO",
+   "id": "8559eaed-3d28-40f3-bbc7-f5c3e1b0f607",
+   "criado": "2026-10-18T16:13:15Z"
+  },
+  "Social Selling ANA": {
+   "rep": [
+    "DM ANA"
+   ],
+   "sub": [],
+   "cargo": "Social Seller",
+   "id": "8ffa5e00-33cd-45c8-a53c-197b3933aaf1",
+   "criado": "2026-11-11T13:39:31Z"
+  },
+  "Stalk Bot": {
+   "rep": [
+    "DM ANA"
+   ],
+   "sub": [],
+   "cargo": "Analista de Inteligência Competitiva",
+   "id": "20bfdac1-371e-4f71-815b-283c22e78355",
+   "criado": "2026-10-18T16:13:15Z"
+  },
+  "Teste de Produto": {
+   "rep": [
+    "Lucas Braga"
+   ],
+   "sub": [],
+   "cargo": "Laboratório de Decisão de Ideias",
+   "id": "06a28198-a769-48a4-bd10-827f50d5902f",
+   "criado": "2026-10-18T16:10:29Z"
+  },
+  "Tráfego ANA": {
+   "rep": [
+    "DM ANA"
+   ],
+   "sub": [],
+   "cargo": "Media Buyer Sênior",
+   "id": "3e522564-6bda-41a3-9410-2a6fffe73322",
+   "criado": "2026-10-18T16:13:15Z"
+  }
+ }
+}

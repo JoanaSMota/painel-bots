@@ -1,7 +1,20 @@
 import http from "node:http";
+import { readFileSync, existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { randomBytes } from "node:crypto";
-import { COOKIE_NAME, LoginLimiter, bearer, readCookie, safeEqual, sessionValue } from "./auth.js";
-import { loginPage, panelPage } from "./page.js";
+import {
+  COOKIE_NAME,
+  LoginLimiter,
+  bearer,
+  chaveOk,
+  readCookie,
+  safeEqual,
+  sessionMatches,
+  sessionValue,
+} from "./auth.js";
+import { OrgSource } from "./organograma.js";
+import { loginPage, panelPage, type PainelBrand } from "./page.js";
 import { AVATAR_MAX, Store } from "./store.js";
 import { ValidationError, botName, parseMessage } from "./validate.js";
 
@@ -9,10 +22,50 @@ const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 export const BODY_LIMIT = 64 * 1024;
 
+// Fontes Biblioteca da Luz (Newsreader + Work Sans; OFL, subconjunto latino). Servidas pelo próprio
+// serviço (CSP font-src 'self'; sem CDN). Lidas uma vez ao subir; não exigem login.
+const FONT_FILES = [
+  "newsreader-400",
+  "newsreader-400i",
+  "newsreader-500",
+  "newsreader-600",
+  "work-sans-400",
+  "work-sans-500",
+  "work-sans-600",
+] as const;
+const FONTS = new Map<string, Buffer>();
+const here = path.dirname(fileURLToPath(import.meta.url));
+const fontDirs = [
+  path.resolve(here, "../../assets/fonts"),
+  path.resolve(process.cwd(), "assets/fonts"),
+  path.resolve(process.cwd(), "painel-dna/fonts"),
+];
+for (const f of FONT_FILES) {
+  let loaded = false;
+  for (const dir of fontDirs) {
+    const fp = path.join(dir, `${f}.woff2`);
+    if (!existsSync(fp)) continue;
+    try {
+      FONTS.set(`/fonts/${f}.woff2`, readFileSync(fp));
+      loaded = true;
+      break;
+    } catch {
+      /* tenta o próximo */
+    }
+  }
+  void loaded;
+}
+
 export interface AppOptions {
   token: string;
   store: Store;
+  /** Organograma (Notion no servidor + cache + snapshot). Sem isso, só o snapshot embutido. */
+  org?: OrgSource;
   log?: (line: string) => void;
+  /** Senha alternativa só do formulário web (PAINEL_LOGIN). Bearer/ingest continua com token. */
+  login?: string;
+  /** Marca do painel (DNA vs bots). */
+  brand?: PainelBrand;
 }
 
 class HttpError extends Error {
@@ -83,20 +136,23 @@ function clientIp(req: http.IncomingMessage): string {
   return first || req.socket.remoteAddress || "?";
 }
 
-export function createApp(opts: AppOptions): http.Server {
+export function createHandler(opts: AppOptions): http.RequestListener {
   const { token, store } = opts;
+  const org = opts.org ?? new OrgSource();
   const log = opts.log ?? ((l: string) => console.log(l));
+  const login = (opts.login ?? "").trim();
+  const brand = opts.brand;
   const session = sessionValue(token);
   const limiter = new LoginLimiter();
 
   function authed(req: http.IncomingMessage): boolean {
     const b = bearer(req.headers.authorization);
-    if (b !== null) return safeEqual(b, token);
+    if (b !== null) return safeEqual(b.trim(), token);
     const c = readCookie(req.headers.cookie, COOKIE_NAME);
-    return c !== null && safeEqual(c, session);
+    return sessionMatches(c, token);
   }
 
-  return http.createServer(async (req, res) => {
+  return async (req, res) => {
     const method = req.method ?? "GET";
     let route = "/";
     try {
@@ -115,7 +171,7 @@ export function createApp(opts: AppOptions): http.Server {
     res.setHeader("Strict-Transport-Security", "max-age=31536000");
     res.setHeader(
       "Content-Security-Policy",
-      `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; img-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
+      `default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'; img-src 'self'; font-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'`,
     );
     // Log mínimo: método, rota (sem query), status. Nunca corpo, step ou token.
     // Em /avatar/<bot> loga só o padrão da rota, não o nome do bot.
@@ -132,7 +188,21 @@ export function createApp(opts: AppOptions): http.Server {
     };
 
     try {
-      if (route === "/health" && (method === "GET" || method === "HEAD")) return json(200, { ok: true });
+      if (route === "/health" && (method === "GET" || method === "HEAD")) {
+        // Campo extra `login` só quando PAINEL_LOGIN está ativo (não quebra clientes antigos).
+        if (login && login.length >= 8) return json(200, { ok: true, login: true });
+        return json(200, { ok: true });
+      }
+
+      const fonte = FONTS.get(route);
+      if (fonte && (method === "GET" || method === "HEAD")) {
+        res.writeHead(200, {
+          "Content-Type": "font/woff2",
+          "Content-Length": String(fonte.length),
+          "Cache-Control": "public, max-age=604800, immutable",
+        });
+        return res.end(method === "HEAD" ? undefined : fonte);
+      }
 
       if (route === "/robots.txt" && method === "GET") {
         res.writeHead(200, { "Content-Type": "text/plain" });
@@ -231,17 +301,39 @@ export function createApp(opts: AppOptions): http.Server {
       }
 
       if (route === "/api/state") {
+        if (method !== "GET" && method !== "HEAD") return json(405, { error: "use GET" });
+        if (!authed(req)) return json(401, { error: "não autorizado" });
+        const refresh = (store as { refresh?: (o?: { force?: boolean }) => Promise<void> }).refresh;
+        if (typeof refresh === "function") await refresh.call(store);
+        store.pruneHandoffs();
+        const ver = (store as { docVersion?: number }).docVersion;
+        const etag = typeof ver === "number" ? `W/"dna-${ver}"` : undefined;
+        if (etag) {
+          res.setHeader("ETag", etag);
+          const inm = req.headers["if-none-match"];
+          if (typeof inm === "string" && inm === etag) {
+            res.writeHead(304);
+            return res.end();
+          }
+        }
+        if (method === "HEAD") {
+          res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+          return res.end();
+        }
+        return json(200, store.state);
+      }
+
+      if (route === "/api/organograma") {
         if (method !== "GET") return json(405, { error: "use GET" });
         if (!authed(req)) return json(401, { error: "não autorizado" });
-        store.pruneHandoffs();
-        return json(200, store.state);
+        return json(200, await org.get());
       }
 
       if (route === "/api/resolve") {
         if (method !== "POST") return json(405, { error: "use POST" });
         // Ação humana do painel: só o cookie de login vale (Bearer não), e só da mesma origem.
         const c = readCookie(req.headers.cookie, COOKIE_NAME);
-        if (c === null || !safeEqual(c, session)) {
+        if (!sessionMatches(c, token)) {
           req.resume();
           return json(401, { error: "não autorizado" });
         }
@@ -282,18 +374,18 @@ export function createApp(opts: AppOptions): http.Server {
         const ip = clientIp(req);
         if (limiter.blocked(ip)) {
           req.resume();
-          return html(429, loginPage(nonce, "Muitas tentativas. Tente de novo em 15 minutos."));
+          return html(429, loginPage(nonce, "Muitas tentativas. Tente de novo em 15 minutos.", brand));
         }
         const raw = await readBody(req, 4096);
-        const chave = new URLSearchParams(raw).get("chave") ?? "";
-        if (!safeEqual(chave, token)) {
+        const chave = (new URLSearchParams(raw).get("chave") ?? "").trim();
+        if (!chaveOk(chave, token, login)) {
           limiter.fail(ip);
-          return html(401, loginPage(nonce, "Chave incorreta."));
+          return html(401, loginPage(nonce, "Chave incorreta.", brand));
         }
         limiter.ok(ip);
         res.writeHead(303, {
           Location: "/",
-          "Set-Cookie": `${COOKIE_NAME}=${session}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=2592000`,
+          "Set-Cookie": `${COOKIE_NAME}=${session}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=2592000`,
         });
         return res.end();
       }
@@ -303,15 +395,15 @@ export function createApp(opts: AppOptions): http.Server {
         req.resume();
         res.writeHead(303, {
           Location: "/",
-          "Set-Cookie": `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`,
+          "Set-Cookie": `${COOKIE_NAME}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`,
         });
         return res.end();
       }
 
       if (route === "/") {
         if (method !== "GET" && method !== "HEAD") return json(405, { error: "use GET" });
-        if (!authed(req)) return html(200, loginPage(nonce));
-        return html(200, panelPage(nonce));
+        if (!authed(req)) return html(200, loginPage(nonce, undefined, brand));
+        return html(200, panelPage(nonce, brand));
       }
 
       return json(404, { error: "não encontrado" });
@@ -320,5 +412,9 @@ export function createApp(opts: AppOptions): http.Server {
       if (e instanceof HttpError) return json(e.status, { error: e.message });
       return json(500, { error: "erro interno" });
     }
-  });
+  };
+}
+
+export function createApp(opts: AppOptions): http.Server {
+  return http.createServer(createHandler(opts));
 }
