@@ -1,5 +1,5 @@
 // Elevador na passagem entre andares: direção da seta (sobe/desce) pela ordem dos andares,
-// portas e painel de andar no desenho, sequência porta abre → entra → fecha → seta, e
+// portas e painel de andar no desenho, portas que abrem na passagem para outro andar, e
 // desempenho (nada com filtro nem animação CSS no elevador; só transform/opacity quadro a quadro).
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -32,7 +32,7 @@ test("mesmo andar ou andar desconhecido: sem seta", () => {
 
 test("painel embute elevSeta e usa a mesma ordem dos andares", () => {
   assert.ok(html.includes("var elevSeta=function elevSeta("));
-  assert.ok(html.includes("p.vai=elevSeta(aqui,outro,ordem);p.vem=elevSeta(outro,aqui,ordem);"));
+  assert.ok(html.includes("var ix=sai?elevSeta(andarSel,tm,ordem):elevSeta(tm,andarSel,ordem);"));
   assert.ok(html.includes("ordem=times().map(function(t){return t.nome;})"));
 });
 
@@ -41,39 +41,31 @@ test("elevador tem portas recortadas no vão, cabine e painel com seta para cima
     assert.ok(html.includes(s), "faltou " + s);
 });
 
-test("sequência: chama, portas abrem, bot entra e some, portas fecham, seta pisca; e o contrário na chegada", () => {
-  const emb = html.slice(html.indexOf("var embarca="), html.indexOf("var desembarca="));
-  const ordem = ["ind:'vai'", "porta0:0,porta1:1", "op0:1,op1:0,porta:1", "porta0:1,porta1:0", "pisca:1"].map((s) => emb.indexOf(s));
-  assert.ok(ordem.every((i) => i >= 0), "faltou peça do embarque");
-  assert.deepEqual(ordem, ordem.slice().sort((a, b) => a - b), "embarque fora de ordem");
-  const des = html.slice(html.indexOf("var desembarca="), html.indexOf("if(a){p.modo='sai'"));
-  const o2 = ["ind:'vem',pisca:1", "porta0:0,porta1:1", "op0:0,op1:1,porta:1", "porta0:1,porta1:0"].map((s) => des.indexOf(s));
-  assert.ok(o2.every((i) => i >= 0), "faltou peça do desembarque");
-  assert.deepEqual(o2, o2.slice().sort((a, b) => a - b), "desembarque fora de ordem");
-  // origem: anda até o elevador e embarca; destino: desembarca, entrega, volta e embarca
-  const sai = html.slice(html.indexOf("p.modo='sai'"), html.indexOf("p.modo='entra'"));
-  assert.match(sai, /anda\(ida2,1,0,[\s\S]*;embarca\(\{[\s\S]*;desembarca\(\{/);
-  const entra = html.slice(html.indexOf("p.modo='entra'"), html.indexOf("function planejaCafe("));
-  assert.match(entra, /desembarca\(\{espera:1300,papel:1\}\);anda\(ida3[\s\S]*recebe:1[\s\S]*embarca\(\{viagem:1400\}\)/);
-  // ao terminar, portas fechadas e painel apagado
-  assert.ok(html.includes("if(p.vai)elevPoe(0,null,0,true);"));
+test("passagem para outro andar: a linha vai até o elevador, que abre e mostra seta e andar; sem passagem, portas fechadas", () => {
+  const dh = html.slice(html.indexOf("function desenhaHandoffs("), html.indexOf("function linhaHo("));
+  // um dos dois em outro andar: linha até o elevador (origem sai / destino chega) e marcador com seta + número do andar
+  assert.match(dh, /var sai=!!a,aq=sai\?a:b/);
+  assert.match(dh, /if\(sai\)linhaHo\(aq,[\s\S]*else linhaHo\(\{x:E\[0\]/);
+  assert.ok(dh.includes("ix.dir==='sobe'?'▲':ix.dir==='desce'?'▼'"));
+  // portas abertas com a direção/andar de destino; ao terminar, fechadas e painel apagado
+  assert.ok(dh.includes("if(cross)elevPoe(1,cross.dir,cross.andar,true);else elevPoe(0,null,0,true);"));
 });
 
 test("desempenho: elevador sem filtro e sem animação CSS; portas só mudam transform", () => {
-  const bloco = html.slice(html.indexOf("// elevador na parede da esquerda"), html.indexOf("// café: sofá e poltrona"));
+  const bloco = html.slice(html.indexOf("// elevador na parede da esquerda"), html.indexOf("// placas no piso"));
   assert.ok(bloco.length > 200);
   assert.ok(!bloco.includes("filter"), "elevador não pode ter filtro");
-  assert.ok(!/class:'(?:brilho|tela|anel|pulo|halo|neon-pulso)'/.test(bloco), "elevador não usa classes animadas");
+  assert.ok(!/class:'(?:brilho|tela|anel|pulo|halo|neon-pulso|fluxo)'/.test(bloco), "elevador não usa classes animadas");
   const css = html.slice(html.indexOf("<style"), html.indexOf("</style>"));
   assert.doesNotMatch(css, /(?:elevador|porta-elev|painel-elev|luz-elev|seta-sobe|seta-desce)/, "sem regra CSS (nem animação) no elevador");
-  const poe = html.slice(html.indexOf("function elevPoe("), html.indexOf("function balaoPass("));
-  assert.ok(!poe.includes("filter"));
+  const poe = html.slice(html.indexOf("function elevPoe("), html.indexOf("function novasPassagens("));
+  assert.ok(poe.length > 100 && !poe.includes("filter"));
   for (const attr of poe.match(/setAttribute\('([a-z-]+)'/g) ?? [])
     assert.ok(/'(transform|display|opacity)'/.test(attr), "elevPoe só mexe em transform/display/opacity: " + attr);
 });
 
-test("movimento reduzido: portas paradas, só a seta acesa fixa", () => {
-  const rm = html.slice(html.indexOf("function desenhaRM("), html.indexOf("function encerra("));
-  assert.ok(rm.includes("var ix=a?p.vai:p.vem;if(ix)elevPoe(0,ix.dir,ix.andar,true);"));
-  assert.match(html, /p\.modo='rm';[^\n]*p\.vai=elevSeta\(/);
+test("movimento reduzido: a linha da passagem fica parada (animação só em CSS, desligada pela regra geral)", () => {
+  const css = html.slice(html.indexOf("<style"), html.indexOf("</style>"));
+  assert.match(css, /\.fluxo\{animation:/);
+  assert.match(css, /@media \(prefers-reduced-motion:reduce\)\{\*,\*::before,\*::after\{animation:none!important/);
 });

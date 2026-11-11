@@ -1,16 +1,20 @@
-# Painel DNA (recuperação)
+# Painel DNA (Vercel + Supabase)
 
-App serverless do Painel DNA (Vercel + Supabase).
+Produção: https://painel-dna-joanasmotas-projects.vercel.app
 
-Este diretório reconstrói o painel depois que o fonte original (só no box `/workspace/painel/app`) ficou inacessível e a UI travava em **conectando...**.
+O visual ativo é o redesign **ANA** do [lucasdbb/painel-bots](https://github.com/lucasdbb/painel-bots) (MAPA | LISTA | ORGANOGRAMA), servido pelo entry `api/index.js` na raiz do repo com estado no Supabase.
 
-## O que mudou nesta recuperação
+## Envs (projeto Vercel `painel-dna`)
 
-- `load()` nunca fica preso: timeout de 12s, `catch` e status **ao vivo** / **sem conexão**
-- Node 24.x (Hobby não aceita 20.x; 26.x estava no projeto anterior)
-- Layout listado por andares/times (estado real do Supabase), com a mesma identidade visual escura e a legenda de hierarquia
-- Auth, `/api/state`, `/ingest`, login/logout e health preservados (envs herdadas do projeto `painel-dna`)
+| Variável | Uso |
+| --- | --- |
+| `PAINEL_TOKEN` | Bearer/ingest (mín. 32) |
+| `PAINEL_LOGIN` | Senha do formulário web (opcional, mín. 8) |
+| `PAINEL_DB_SECRET` | RPC Supabase |
+| `SUPABASE_URL` / `SUPABASE_KEY` | Backend |
+| `NOTION_TOKEN` | Opcional — sem ele a aba ORGANOGRAMA fica oculta no DNA |
+| `TZ_PAINEL` | America/Recife |
 
 ## Deploy
 
-Arquivos: `api/index.js`, `vercel.json`, `package.json` → projeto Vercel `painel-dna`.
+`vercel.json` na raiz: `npm run build` + rewrite `/(.*) → /api`.

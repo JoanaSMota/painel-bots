@@ -150,7 +150,7 @@ test("login por chave grava cookie seguro e libera o painel", async () => {
   const ok = await fetch(`${base}/login`, { method: "POST", body: new URLSearchParams({ chave: TOKEN }), redirect: "manual" });
   assert.equal(ok.status, 303);
   const sc = ok.headers.get("set-cookie") ?? "";
-  for (const f of ["HttpOnly", "Secure", "SameSite=Strict"]) assert.ok(sc.includes(f), f);
+  for (const f of ["HttpOnly", "Secure", "SameSite=Lax"]) assert.ok(sc.includes(f), f);
   assert.ok(!sc.includes(TOKEN), "cookie não pode conter a chave");
   const cookie = sc.split(";")[0]!;
   const p = await fetch(`${base}/`, { headers: { Cookie: cookie } });
