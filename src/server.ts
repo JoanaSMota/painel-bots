@@ -22,9 +22,17 @@ const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 export const BODY_LIMIT = 64 * 1024;
 
-// Fontes do visual ANA (Orbitron, Inter, JetBrains Mono; licença OFL, subconjunto latino). Servidas pelo próprio
-// serviço (a CSP não aceita CDN), lidas uma vez ao subir. Não carregam dado nenhum, por isso não exigem login.
-const FONT_FILES = ["orbitron", "inter", "jetbrains-mono"] as const;
+// Fontes Biblioteca da Luz (Newsreader + Work Sans; OFL, subconjunto latino). Servidas pelo próprio
+// serviço (CSP font-src 'self'; sem CDN). Lidas uma vez ao subir; não exigem login.
+const FONT_FILES = [
+  "newsreader-400",
+  "newsreader-400i",
+  "newsreader-500",
+  "newsreader-600",
+  "work-sans-400",
+  "work-sans-500",
+  "work-sans-600",
+] as const;
 const FONTS = new Map<string, Buffer>();
 const here = path.dirname(fileURLToPath(import.meta.url));
 const fontDirs = [

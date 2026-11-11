@@ -28,7 +28,7 @@ const brand =
   (process.env.PAINEL_BRAND ?? "").trim().toLowerCase() === "dna"
     ? {
         name: "Painel DNA",
-        titulo: "PAINEL DNA",
+        titulo: "Painel DNA",
         wm: ["DNA", "IA"] as [string, string],
         hideOrg: !(process.env.NOTION_TOKEN ?? "").trim(),
       }

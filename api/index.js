@@ -10,7 +10,7 @@ let handlerPromise = null;
 function brandDna() {
   return {
     name: "Painel DNA",
-    titulo: "PAINEL DNA",
+        titulo: "Painel DNA",
     wm: ["DNA", "IA"],
     hideOrg: !(process.env.NOTION_TOKEN || "").trim(),
   };

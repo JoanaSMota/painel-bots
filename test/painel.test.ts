@@ -53,7 +53,7 @@ test("copa: lugar estável, quem chega pega o menor livre e passando do total vi
 const html = panelPage("nonce-ana");
 
 test("topbar: logo, título, Ao vivo, pílulas, abas MAPA | LISTA | ORGANOGRAMA e Sair", () => {
-  for (const s of ["A NOVA<b>ADVOCACIA</b>", "PAINEL DOS BOTS", 'id="vivotxt"', 'id="contas"', 'data-aba="mapa">MAPA', 'data-aba="lista">LISTA', 'data-aba="org">ORGANOGRAMA', 'action="/logout"'])
+  for (const s of ["A NOVA<b>ADVOCACIA</b>", "Painel dos bots", 'id="vivotxt"', 'id="contas"', 'data-aba="mapa">MAPA', 'data-aba="lista">LISTA', 'data-aba="org">ORGANOGRAMA', 'action="/logout"'])
     assert.ok(html.includes(s), "faltou " + s);
 });
 
@@ -78,12 +78,16 @@ test("coluna direita e aba LISTA existem; LISTA usa os mesmos dados do estado", 
   assert.ok(html.includes("linkChat(botSel,'cta','Abrir chat')"));
 });
 
-test("paleta ANA: Deep Space, cyan, purple, gold, neural white, erro #FF3B6B; sem fundo claro", () => {
+test("paleta Biblioteca da Luz: sala, papel, tinta, âmbar, confirmado, ao-vivo; fontes Newsreader/Work Sans", () => {
   const css = html.slice(html.indexOf("<style"), html.indexOf("</style>"));
-  for (const c of ["#050811", "#00F0FF", "#6366F1", "#D4AF37", "#FAFBFF", "#FF3B6B"]) assert.ok(css.includes(c), "faltou " + c);
-  assert.match(css, /--bg:#050811/);
-  assert.doesNotMatch(css, /background:\s*(?:#fff\b|#ffffff\b|#e9ecf1|white)/i, "fundo claro");
-  for (const f of ["Orbitron", "Inter", "JetBrains Mono"]) assert.ok(css.includes(f), "faltou fonte " + f);
+  for (const c of ["#140B06", "#F7EFE1", "#1C120A", "#E8B04C", "#8A5A1E", "#3F6B3A", "#D9532C", "#DCC6A6"])
+    assert.ok(css.includes(c), "faltou " + c);
+  assert.match(css, /--sala:#140B06/);
+  assert.match(css, /--papel:#F7EFE1/);
+  assert.match(css, /--ambar:#E8B04C/);
+  assert.doesNotMatch(css, /background:\s*(?:#fff\b|#ffffff\b|#e9ecf1|white)\b/i, "branco puro");
+  for (const f of ["Newsreader", "Work Sans"]) assert.ok(css.includes(f), "faltou fonte " + f);
+  assert.ok(!css.includes("Orbitron") && !css.includes("JetBrains Mono"), "fontes ANA removidas");
 });
 
 test("identidade dos bots: forma e cor do look e a foto de /avatar/<nome> continuam", () => {
@@ -96,9 +100,10 @@ test("mapa: mesa com cadeira, copa para quem descansa e rótulo fixo só de trab
     assert.ok(html.includes(s), "faltou " + s);
 });
 
-test("login também no visual ANA e sem fundo claro", () => {
+test("login também no visual Biblioteca e sem branco puro", () => {
   const l = loginPage("n", "chave errada");
-  assert.ok(l.includes("chave errada") && l.includes('class="login glass"') && l.includes("#050811"));
+  assert.ok(l.includes("chave errada") && l.includes('class="login glass"') && l.includes("#140B06"));
+  assert.ok(l.includes("tema-biblioteca") && l.includes("Newsreader"));
 });
 
 let server: http.Server;
@@ -112,15 +117,15 @@ after(async () => {
   await new Promise<void>((r) => server.close(() => r()));
 });
 
-test("fontes: servidas pelo próprio serviço (woff2, só as 3 da lista) e a CSP libera font-src 'self' e nada de fora", async () => {
-  for (const f of ["orbitron", "inter", "jetbrains-mono"]) {
+test("fontes: servidas pelo próprio serviço (woff2 Biblioteca) e a CSP libera font-src 'self' e nada de fora", async () => {
+  for (const f of ["newsreader-400", "newsreader-400i", "newsreader-500", "newsreader-600", "work-sans-400", "work-sans-500", "work-sans-600"]) {
     const r = await fetch(`${base}/fonts/${f}.woff2`);
     assert.equal(r.status, 200, f);
     assert.equal(r.headers.get("content-type"), "font/woff2");
     const buf = Buffer.from(await r.arrayBuffer());
     assert.equal(buf.subarray(0, 4).toString("latin1"), "wOF2", "arquivo woff2");
   }
-  for (const rota of ["/fonts/../package.json", "/fonts/%2e%2e/package.json", "/fonts/outra.woff2", "/fonts/inter.woff2.map"])
+  for (const rota of ["/fonts/../package.json", "/fonts/%2e%2e/package.json", "/fonts/outra.woff2", "/fonts/orbitron.woff2", "/fonts/inter.woff2"])
     assert.equal((await fetch(`${base}${rota}`)).status, 404, rota);
   const csp = (await fetch(`${base}/`)).headers.get("content-security-policy") ?? "";
   assert.match(csp, /font-src 'self'/);
