@@ -96,7 +96,7 @@ test("identidade dos bots: forma e cor do look e a foto de /avatar/<nome> contin
 });
 
 test("mapa: mesa com cadeira, copa para quem descansa e rótulo fixo só de trabalhando/esperando/erro", () => {
-  for (const s of ["function cadeira(", "function mesa(", "COPA · DESCANSO", "var dorme=lista.filter(function(nn){return !sentaNaMesa(stt(nn));})", "function dica(", "if(s==='working'||s==='waiting_user'||s==='error')bals.push("])
+  for (const s of ["function cadeira(", "function mesa(", "function estante(", "function livro(", "BIBLIOTECA", "LEITURA · DESCANSO", "var dorme=lista.filter(function(nn){return !sentaNaMesa(stt(nn));})", "function dica(", "if(s==='working'||s==='waiting_user'||s==='error')bals.push("])
     assert.ok(html.includes(s), "faltou " + s);
 });
 
@@ -138,7 +138,7 @@ test("fontes: servidas pelo próprio serviço (woff2 Biblioteca) e a CSP libera 
 test("rótulos do mapa desviam do letreiro COPA e dos textos do piso (colisão contra texto, não só contra bots)", () => {
   assert.ok(html.includes("function obstTexto("));
   assert.ok(html.includes("obstTexto(sv('text',{transform:tm,"), "letreiro COPA vira obstáculo");
-  assert.ok(html.includes("obstTexto(t,m,sz);return t;}"), "textos do piso (ÁREA DE TRABALHO / COPA · DESCANSO) viram obstáculo");
+  assert.ok(html.includes("obstTexto(t,m,sz);return t;}"), "textos do piso (BIBLIOTECA / LEITURA · DESCANSO) viram obstáculo");
   // os balões consideram esses retângulos (rects) além dos outros bots; rects nasce antes do primeiro texto
   assert.ok(html.indexOf(" var rects=[];") > 0 && html.indexOf(" var rects=[];") < html.indexOf("function obstTexto("));
   // o rótulo também desvia de TODOS os bots do piso, inclusive o próprio dono (correção B), via posicionaRotulo
